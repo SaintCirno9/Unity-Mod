@@ -97,6 +97,7 @@ public class Plugin : MelonMod
         
         LOG.Msg("LYMod is loaded!左alt + e 打开窗体!");
         
+        ChaneMaxNum();
        
     }
    
@@ -107,8 +108,6 @@ public class Plugin : MelonMod
         {
             showMainWindow = !showMainWindow;
         }
-
-        
     }
     
     public override void OnGUI()
@@ -306,19 +305,10 @@ public class Plugin : MelonMod
             _tagMaxNum.Value = int.Parse(_tagMaxNumInput);
             _studyFightRate.Value = float.Parse(_studyFightRateInput);
             _studyUniqeRate.Value = float.Parse(_studyUniqeRateInput);
+
+            _maxSkillNum.Value = int.Parse(_maxSkillNumInput);
+            ChaneMaxNum();
             
-            if (int.Parse(_maxSkillNumInput) != _maxSkillNum.Value)
-            {
-                _maxSkillNum.Value = int.Parse(_maxSkillNumInput);
-                var maxSkillNum = GlobalData.MaxSkillNum;
-                if (maxSkillNum.Count == 6)
-                {
-                    for (int i = 0; i < 6; i++)
-                    {
-                        maxSkillNum[i] = _skillBaseNum[i] * _maxSkillNum.Value;
-                    }
-                }
-            }
             
             _mainCategory.SaveToFile();
         }
@@ -345,6 +335,18 @@ public class Plugin : MelonMod
         
         GUILayout.EndVertical();
         
+    }
+
+    private void ChaneMaxNum()
+    {
+        var maxSkillNum = GlobalData.MaxSkillNum;
+        if (maxSkillNum.Count == 6)
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                maxSkillNum[i] = _skillBaseNum[i] * _maxSkillNum.Value;
+            }
+        }
     }
     
     private string? _readBookRateInput;
