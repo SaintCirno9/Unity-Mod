@@ -1,31 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\zby03\\Desktop\\mod\\HelloMod\\HelloMod\\HelloMod.csproj": {}
+    "C:\\Users\\zby03\\Desktop\\Unity-Mod\\HelloMod\\HelloMod\\HelloMod.csproj": {}
   },
   "projects": {
-    "C:\\Users\\zby03\\Desktop\\mod\\HelloMod\\HelloMod\\HelloMod.csproj": {
+    "C:\\Users\\zby03\\Desktop\\Unity-Mod\\HelloMod\\HelloMod\\HelloMod.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\zby03\\Desktop\\mod\\HelloMod\\HelloMod\\HelloMod.csproj",
+        "projectUniqueName": "C:\\Users\\zby03\\Desktop\\Unity-Mod\\HelloMod\\HelloMod\\HelloMod.csproj",
         "projectName": "HelloMod",
-        "projectPath": "C:\\Users\\zby03\\Desktop\\mod\\HelloMod\\HelloMod\\HelloMod.csproj",
+        "projectPath": "C:\\Users\\zby03\\Desktop\\Unity-Mod\\HelloMod\\HelloMod\\HelloMod.csproj",
         "packagesPath": "C:\\Users\\zby03\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\zby03\\Desktop\\mod\\HelloMod\\HelloMod\\obj\\",
+        "outputPath": "C:\\Users\\zby03\\Desktop\\Unity-Mod\\HelloMod\\HelloMod\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\zby03\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\zby03\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net6.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
