@@ -1,12 +1,110 @@
-﻿using UnityEngine;
-
-namespace LYMod;
+﻿namespace LYMod;
 
 using HarmonyLib;
 using Il2Cpp;
 
-public class StudyUniqueSkillControllerPatches
+public class AreaBuildingDataPatches
 {
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaRoadData), nameof(AreaRoadData.GetUpgradeTime))]
+    public static void AreaRoadData_GetUpgradeTime_Postfix(AreaRoadData __instance, ref int __result)
+    {
+        if (__instance != null && Plugin.Instance._upgradeDay1.Value)
+            __result = 1;
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetBuildTime))]
+    public static void AreaBuildingData_GetBuildTime_Postfix(AreaBuildingData __instance, ref int __result)
+    {
+        if (__instance != null && Plugin.Instance._upgradeDay1.Value)
+            __result = 1;
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetUpgradeTime))]
+    public static void AreaBuildingData_GetUpgradeTime_Postfix(AreaBuildingData __instance, ref int __result)
+    {
+        if (__instance != null && Plugin.Instance._upgradeDay1.Value)
+            __result = 1;
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetMoveTime))]
+    public static void AreaBuildingData_GetMoveTime_Postfix(AreaBuildingData __instance, ref int __result)
+    {
+        if (__instance != null && Plugin.Instance._upgradeDay1.Value)
+            __result = 1;
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetDestroyTime))]
+    public static void AreaBuildingData_GetDestroyTime_Postfix(AreaBuildingData __instance, ref int __result)
+    {
+        if (__instance != null && Plugin.Instance._upgradeDay1.Value)
+             __result = 1;
+    }
+}
+// 指定突破加的什么属性
+public class BreakThroughChoiceControllerPatch
+{
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(BreakThroughChoiceController), nameof(BreakThroughChoiceController.OnClick))]
+    public static bool BreakThroughChoiceController_OnClick_Postfix(BreakThroughChoiceController __instance)
+    {
+        if (__instance != null)
+        {
+            var heroSpeAddData = __instance.extraAddData.heroSpeAddData;
+            
+            if (TestElement._breakFlag1)
+            {
+                heroSpeAddData.Clear();
+                heroSpeAddData[int.Parse(TestElement._breakType)] = float.Parse(TestElement._breakValue);
+                TestElement._breakFlag1 = false;
+            }
+        }
+        return true;
+    }
+}
+
+// 写书1天
+public class BookWriterUIControllerPatches
+{
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(BookWriterUIController), nameof(BookWriterUIController.ShowBookWriterUI))]
+    public static void BookWriterUIController_ShowBookWriterUI_Postfix(BookWriterUIController __instance)
+    {
+        if (__instance != null && Plugin.Instance._copyBookFlag.Value)
+        {
+            var list = __instance.targetBookWriterList;
+            foreach (var bwd in list)
+            {
+                if (bwd != null && bwd.workPercent < 0.99)
+                    bwd.workPercent = 0.99f;
+            }
+        }
+    }
+}
+
+public class StudySkillPatches
+{
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(StudyDodgeSkillController), nameof(StudyDodgeSkillController.FinishStudyDodgeSkill))]
+    public static void StudyDodgeSkillController_FinishStudyDodgeSkill_Postfix(StudyDodgeSkillController __instance,
+        StudySkillResult studyDodgeResult)
+    {
+        if (__instance != null)
+        {
+            __instance.totalExp *= Plugin.Instance._studyUniqeRate.Value;
+        }
+    }
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(StudyInternalSkillController), nameof(StudyInternalSkillController.FinishStudyInternalSkill))]
+    public static void StudyInternalSkillController_FinishStudyInternalSkill_Postfix(StudyInternalSkillController __instance,
+        StudyInternalResult studyInternalResult)
+    {
+        if (__instance != null)
+        {
+            __instance.totalExp *= Plugin.Instance._studyUniqeRate.Value;
+        }
+    }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(StudyUniqueSkillController), nameof(StudyUniqueSkillController.FinishStudyUniqueSkill))]
     public static void StudyUniqueSkillController_FinishStudyUniqueSkill_Postfix(StudyUniqueSkillController __instance,
@@ -17,10 +115,6 @@ public class StudyUniqueSkillControllerPatches
             __instance.totalExp *= Plugin.Instance._studyUniqeRate.Value;
         }
     }
-}
-
-public class StudyAttackSkillControllerPatches
-{
     [HarmonyPostfix]
     [HarmonyPatch(typeof(StudyAttackSkillController), nameof(StudyAttackSkillController.FinishStudyFightSkill))]
     public static void StudyAttackSkillController_FinishStudyFightSkill_Postfix(StudyAttackSkillController __instance,
@@ -78,6 +172,12 @@ public class HeroDataPatch
         {
             num = 0f;
         }
+
+        if (Plugin.Instance._favorTimes.Value > 1)
+        {
+            num *= Plugin.Instance._favorTimes.Value;
+        }
+
         return true; 
     }
     
@@ -106,7 +206,21 @@ public class CraftingPatches
 
 public class PlotControllerPatches
 {
-
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(PlotController), nameof(PlotController.GenerateAuctionItem))]
+    public static bool PlotController_GenerateAuctionItem_Prefix(PlotController __instance,ItemListData targetItemList, 
+        ref float shopLv, List<int> itemTypeLimit, ref int itemNum)
+    {
+        if (__instance != null)
+        {
+            if (shopLv < 1)
+                shopLv = 1;
+            shopLv *= Plugin.Instance._shopLvRate.Value;
+            itemNum = Plugin.Instance._itemNum.Value;
+        }
+        return true;
+    }
+    
     [HarmonyPostfix]
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.CheckMeetRequire))]
     public static void PlotController_CheckMeetRequire_Postfix(PlotController __instance,
@@ -202,8 +316,26 @@ public class ExploreControllerPatches
 
 public class ForceDataPatches
 {
-// 0钱1粮2木3矿4药5威望
-
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ForceData), nameof(ForceData.GetForceFavor))]
+    public static void ForceData_GetForceFavor_Postfix(ForceData __instance, int forceID)
+    {
+        if (__instance != null && Plugin.Instance._playerOutForceContribution.Value)
+        {
+            __instance.playerOutForceContribution = 9999;
+        }
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ForceData), nameof(ForceData.GetNowResearchTech))]
+    public static void ForceData_GetNowResearchTech_Postfix(ForceData __instance, ForceTechLvData __result)
+    {
+        if (__instance != null && __result != null && Plugin.Instance._reasearchFlag.Value)
+        {
+            __result.researchPercent = 1f;
+        }
+    }
+    
+    // 0钱1粮2木3矿4药5威望
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ForceData), nameof(ForceData.CostResource),
         typeof(Il2CppSystem.Collections.Generic.List<float>), typeof(bool))]
@@ -260,30 +392,92 @@ public class ForceDataPatches
 
 public class ItemListDataPatches
 {
-    [HarmonyPrefix]
+    [HarmonyPostfix]
     [HarmonyPatch(typeof(ItemListData), nameof(ItemListData.GetItem), typeof(ItemData), typeof(bool))]
-    public static bool ItemListData_GetItem_Prefix(ItemListData __instance, ItemData targetItem, bool showPopInfo = false)
+    public static void ItemListData_GetItem_Postfix(ItemListData? __instance, ItemData targetItem, bool showPopInfo = false)
     {
-        
-        __instance.weight *= Plugin.Instance._weightRatio.Value;
-        
-        if (targetItem.type == ItemType.Book && Plugin.Instance._redBook.Value) 
-            targetItem = targetItem.SetBookData(targetItem.bookData.skillID, 5);
-        if (targetItem.type == ItemType.Material && Plugin.Instance._redMaterial.Value) 
-            targetItem = targetItem.SetMaterialData(targetItem.subType, 5, 5);
-        if (targetItem.type == ItemType.Treasure && Plugin.Instance._redTreasure.Value)
+        if (__instance != null)
         {
-            var item = targetItem;
-            try
+            __instance.weight *= Plugin.Instance._weightRatio.Value;
+
+            if (targetItem.type == ItemType.Book && Plugin.Instance._redBook.Value)
             {
-                targetItem.SetTreasureData(targetItem.subType, 5, 5);
+                targetItem = targetItem.SetBookData(targetItem.bookData.skillID, 5);
             }
-            catch (Exception e)
+
+            if (targetItem.type == ItemType.Material && TestElement._redMaterial)
             {
-                targetItem = item;
+                targetItem.itemLv = 5;
+                targetItem.rareLv = 5;
+                
+                var inputBox = ParseInputBox(TestElement._materialAttr);
+                if (inputBox == null)
+                    return;
+                var il2CppDictionary = ToIl2CppDictionary(inputBox);
+                if (il2CppDictionary == null)
+                    return;
+                targetItem.materialData.extraAddData.heroSpeAddData = il2CppDictionary; 
+                TestElement._redMaterial = false;
+            }
+               
+            if (targetItem.type == ItemType.Treasure && Plugin.Instance._redTreasure.Value)
+            {
+                var list = targetItem.treasureData.treasureLv;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    list[i] = 5;
+                }
+                targetItem.itemLv = 5;
+                targetItem.rareLv = 5;
             }
         }
-        return true;
+    }
+    
+    // 输入框文本转字典
+    public static Dictionary<int, float>? ParseInputBox(string inputText)
+    {
+        if (string.IsNullOrWhiteSpace(inputText)) 
+            return null;
+
+        return inputText
+            // 先替换所有空格
+            .Replace(" ", "")
+            // 按分号分割键值对
+            .Split(';', StringSplitOptions.RemoveEmptyEntries)
+            // 按等号分割key/value
+            .Select(pair => pair.Split('='))
+            // 过滤无效格式（必须是key=value）
+            .Where(kv => kv.Length == 2)
+            // 安全转换类型（避免输错数字导致崩溃）
+            .Where(kv => int.TryParse(kv[0], out _) && float.TryParse(kv[1], out _))
+            // 转字典
+            .ToDictionary(
+                kv => int.Parse(kv[0]),
+                kv => float.Parse(kv[1])
+            );
+    }
+    public static Il2CppSystem.Collections.Generic.Dictionary<int, float>? ToIl2CppDictionary(Dictionary<int, float> systemDict)
+    {
+        // 初始化 IL2CPP 字典
+        var il2cppDict = new Il2CppSystem.Collections.Generic.Dictionary<int, float>();
+
+        // 空值判断，避免崩溃
+        if (systemDict == null || systemDict.Count == 0)
+        {
+           return null;
+        }
+
+        // 遍历原生字典，逐个添加到 IL2CPP 字典
+        foreach (var kvp in systemDict)
+        {
+            // 避免重复key（IL2CPP字典添加重复key会抛异常）
+            if (!il2cppDict.ContainsKey(kvp.Key))
+            {
+                il2cppDict.Add(kvp.Key, kvp.Value);
+            }
+        }
+
+        return il2cppDict;
     }
 }
 
@@ -302,12 +496,7 @@ public class BreakThroughControllerPatches
     public static void BreakThroughController_BreakFoodChoose_Postfix(BreakThroughController __instance)
     {
         if (__instance != null)
-        {
             __instance.baseScoreRate *= Plugin.Instance._redBreak.Value;
-            Plugin.LOG.Msg(Plugin.Instance._redBreak.Value);
-            Plugin.LOG.Msg(__instance.baseScoreRate);
-            
-        }
     }
 
     [HarmonyPatch(typeof(BreakThroughController), nameof(BreakThroughController.BreakMedChoose))]
@@ -318,3 +507,4 @@ public class BreakThroughControllerPatches
             __instance.baseScoreRate *= Plugin.Instance._redBreak.Value;
     }
 }
+

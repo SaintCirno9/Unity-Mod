@@ -21,27 +21,28 @@ public class PlotControllerPatches
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.TeachNewSkillToNPCSure))]
     public static void PlotController_TeachNewSkillToNPCSure_Postfix(PlotController __instance, string skillIDParam)
     {
-        if (__instance != null)
+        if (__instance != null && Plugin.Instance._teachNewSkillToNPC.Value)
         {
-            if (Plugin.Instance._teachNewSkillToNPC.Value)
+            var a = __instance.targetInteractHero;
+            var b = a.FindSkill(int.Parse(skillIDParam));
+            for (int i = 0; i < 10; i++)
             {
-                for (int i = 0; i < 5; i++)
-                {
-                    __instance.TeachNPCSure(skillIDParam);
-                }
+                a.UpgradeSkill(b);
             }
         }
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.TeachNPCSure))]
-    public static void PlotController_TeachNPCSure_Postfix(PlotController __instance)
+    public static void PlotController_TeachNPCSure_Postfix(PlotController __instance, string skillIDParam)
     {
-        if (__instance != null)
+        if (__instance != null && Plugin.Instance._teachNPC.Value)
         {
-            if (Plugin.Instance._interaction.Value)
+            var a = __instance.targetInteractHero;
+            var b = a.FindSkill(int.Parse(skillIDParam));
+            for (int i = 0; i < 10; i++)
             {
-                __instance.targetInteractHero.playerInteractionTimeData.ResetTime();
+                a.UpgradeSkill(b);
             }
         }
     }
@@ -141,15 +142,13 @@ public class ItemListDataPatches
             targetItem = targetItem.SetMaterialData(targetItem.subType, 5, 5);
         if (targetItem.type == ItemType.Treasure && Plugin.Instance._redTreasure.Value)
         {
-            var item = targetItem;
-            try
+            var list = targetItem.treasureData.treasureLv;
+            for (int i = 0; i < list.Count; i++)
             {
-                targetItem.SetTreasureData(targetItem.subType, 5, 5);
+                list[i] = 5;
             }
-            catch (Exception e)
-            {
-                targetItem = item;
-            }
+            targetItem.itemLv = 5;
+            targetItem.rareLv = 5;
         }
            
         return true;

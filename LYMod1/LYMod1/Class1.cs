@@ -9,7 +9,7 @@ namespace LYMod1;
 public static class ModConstants
 {
     public const string MOD_NAME = "LYMod";       // 插件名
-    public const string MOD_VERSION = "1.1.2";    // 版本号
+    public const string MOD_VERSION = "1.2";    // 版本号
 }
 
 [BepInPlugin(ModConstants.MOD_NAME, ModConstants.MOD_NAME, ModConstants.MOD_VERSION)]
@@ -20,8 +20,7 @@ public class Plugin : BasePlugin
     
     // 配置项
     public ConfigEntry<bool> _teachNewSkillToNPC;
-
-    // private ConfigEntry<bool> _teachNPC; // 传授满级
+    public ConfigEntry<bool> _teachNPC; // 传授满级
     public ConfigEntry<bool> _interaction; // 无限交互
     public ConfigEntry<bool> _readBook; // 读书经验50w
     public ConfigEntry<bool> _explore; // 探险耐力锁1000
@@ -39,7 +38,7 @@ public class Plugin : BasePlugin
     {
         Instance = this;
         _teachNewSkillToNPC = Config.Bind("Config", "testNumChangeToggle", false, "传授满级");
-        // _teachNPC = Config.Bind("Config", "teachNPC", false, "传授满级");
+        _teachNPC = Config.Bind("Config", "teachNPC", false, "传授满级");
         _interaction = Config.Bind("Config", "interaction", false, "无限交互");
         _readBook = Config.Bind("Config", "testNumChangeToggle", false, "读书经验50w");
         _explore = Config.Bind("Config", "explore", false, "探险耐力锁1000");
