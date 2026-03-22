@@ -16,7 +16,22 @@ public class CraftingPatches
 
 public class PlotControllerPatches
 {
-
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(PlotController), nameof(PlotController.CheckMeetRequire))]
+    public static void PlotController_CheckMeetRequire_Postfix(PlotController __instance,
+        ChoiceRequirementType requireType, float requireNum, bool includeTeamMate = true)
+    {
+        if (__instance != null && Plugin.Instance._interaction.Value)
+        {
+            var hero = __instance.targetInteractHero;
+            if (hero != null)
+            {
+                hero.playerInteractionTimeData.ResetTime();
+            }
+        }
+    }
+    
     [HarmonyPostfix]
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.TeachNewSkillToNPCSure))]
     public static void PlotController_TeachNewSkillToNPCSure_Postfix(PlotController __instance, string skillIDParam)

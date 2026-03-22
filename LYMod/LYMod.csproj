@@ -64,6 +64,9 @@
         <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\bHapticsLib.dll</HintPath>
         <Private>False</Private>
       </Reference>
+      <Reference Include="Hexa.NET.ImGui">
+        <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\Mods\Hexa.NET.ImGui.dll</HintPath>
+      </Reference>
       <Reference Include="Iced">
         <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\Iced.dll</HintPath>
         <Private>False</Private>

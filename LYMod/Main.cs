@@ -3,28 +3,27 @@ using Il2Cpp;
 using LYMod;
 using MelonLoader;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 
-[assembly: MelonInfo(typeof(LYMod.Plugin), ModConstants.MOD_NAME, ModConstants.MOD_VERSION, ModConstants.MOD_AUTHOR)]
+[assembly: MelonInfo(typeof(LYMod.Plugin), ModConstants.ModName, ModConstants.ModVersion, ModConstants.ModAuthor)]
 [assembly:MelonGame("TppStudio", "LongYinLiZhiZhuan")]
 [assembly:MelonPlatformDomain(MelonPlatformDomainAttribute.CompatibleDomains.IL2CPP)]
 namespace LYMod;
 
 public static class ModConstants
 {
-    public const string MOD_NAME = "LYMod";       // 插件名
-    public const string MOD_VERSION = "2.1";    // 版本号
-    public const string MOD_AUTHOR = "Can";       // 作者
+    public const string ModName = "LYMod";     // 插件名
+    public const string ModVersion = "2.2.1";    // 版本号
+    public const string ModAuthor = "Can";     // 作者
 }
 
-public class Plugin : MelonMod 
+public class Plugin : MelonMod
 {
-    public static Plugin Instance { get; private set; }
-    public static MelonLogger.Instance LOG = Melon<Plugin>.Logger;
+    public static Plugin Instance;
+    public static readonly MelonLogger.Instance LOG = Melon<Plugin>.Logger;
     
     // 配置项
-    private MelonPreferences_Category _mainCategory;
+    public MelonPreferences_Category? _mainCategory;
     public MelonPreferences_Entry<bool> _teachNewSkillToNPC; // 传授满级
     public MelonPreferences_Entry<bool> _teachNPC; // 指点满级
     public MelonPreferences_Entry<bool> _interaction; // 无限交互
@@ -49,21 +48,23 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<bool> _copyBookFlag; //默写/抄书1天
     public MelonPreferences_Entry<bool> _reasearchFlag; //门派研究一天
     public MelonPreferences_Entry<int> _favorTimes; //好感倍数
+    public MelonPreferences_Entry<int> MoneyTimes; //金钱倍数
     public MelonPreferences_Entry<bool> _upgradeDay1; //门派升级一天
     public MelonPreferences_Entry<bool> _playerOutForceContribution; //门派升级一天
+    public MelonPreferences_Entry<bool> JianBaoFlag; //门派升级一天
+    public MelonPreferences_Entry<bool> MaxBreak; //测试项-上限突破到999
     
     // GUI状态
     private Vector2 mainScrollPos;
     private Rect mainWindowRect = new(50, 50, 450, 550);
     private int _hight = 480;
-    private bool showMainWindow = false;
+    private bool _showMainWindow = false;
     private readonly string[] tabNames = { "功能开关", "功能说明", "测试", "属性ID" };
     private int selectedTab;
-
+    
     public override void OnInitializeMelon()
     {
         Instance = this;
-        
         _mainCategory = MelonPreferences.CreateCategory("LYModConfig", "LYModConfig");
         
         _studyFightRate = _mainCategory.CreateEntry<float>("studyFightRate", 1,  description: "练功房学习战斗经验倍率");
@@ -79,7 +80,10 @@ public class Plugin : MelonMod
         _shopLvRate = _mainCategory.CreateEntry<float>("shopLvRate", 1,  description: "拍卖会品质倍率");
         _itemNum = _mainCategory.CreateEntry("itemNum", -1,  description: "拍卖会物品数量");
         _favorTimes = _mainCategory.CreateEntry("favorTimes", 1,  description: "好感倍数");
+        MoneyTimes = _mainCategory.CreateEntry("MoneyTimes", 1,  description: "金钱倍数");
+        
 
+        MaxBreak = _mainCategory.CreateEntry("MaxBreak", false, "上限突破到999");
         _playerOutForceContribution = _mainCategory.CreateEntry("playerOutForceContribution", false, "非本门功绩");
         _upgradeDay1 = _mainCategory.CreateEntry("upgrade1", false, "升级一天");
         _copyBookFlag = _mainCategory.CreateEntry("copyBookFlag", false, "抄书一天");
@@ -93,6 +97,7 @@ public class Plugin : MelonMod
         _hgbj = _mainCategory.CreateEntry("hfbj", false,  description: "好感度不会减少");
         _cost0 = _mainCategory.CreateEntry("cost0", true,  description: "建筑升级资源零消耗");
         _redTreasure = _mainCategory.CreateEntry("redTreasure", false,  description: "必定是红色珍宝慎用");
+        JianBaoFlag = _mainCategory.CreateEntry("JianBaoFlag", false,  description: "一眼看穿宝物品质");
         
         var harmony = new HarmonyLib.Harmony("LYMod");
         harmony.PatchAll(typeof(ReadBookControllerPatches));
@@ -108,6 +113,8 @@ public class Plugin : MelonMod
         harmony.PatchAll(typeof(BookWriterUIControllerPatches));
         harmony.PatchAll(typeof(BreakThroughChoiceControllerPatch));
         harmony.PatchAll(typeof(AreaBuildingDataPatches));
+        harmony.PatchAll(typeof(CraftPoisonUIControllerPatches));
+        harmony.PatchAll(typeof(HeroTagIconControllerPatches));
         
         
         LOG.Msg("LYMod is loaded!左alt + e 打开窗体!");
@@ -121,22 +128,16 @@ public class Plugin : MelonMod
         // 左alt + e 打开窗体
         if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.E))
         {
-            showMainWindow = !showMainWindow;
+            _showMainWindow = !_showMainWindow;
         }
-        
-        // if (Input.GetKey(KeyCode.BackQuote))
-        // {
-        //     //test1();
-        //    
-        // }
     }
-    
+
     public override void OnGUI()
     {
-        // 开启 / 关闭窗体
-        if (showMainWindow)
+       // 开启 / 关闭窗体
+        if (_showMainWindow)
             // 主窗口
-            mainWindowRect = GUI.Window(0, mainWindowRect, (GUI.WindowFunction)DrawMainWindow, "LYMod " + ModConstants.MOD_VERSION);
+            mainWindowRect = GUI.Window(0, mainWindowRect, (GUI.WindowFunction)DrawMainWindow, "LYMod " + ModConstants.ModVersion);
     }
 
     private void DrawMainWindow(int windowId)
@@ -190,13 +191,13 @@ public class Plugin : MelonMod
         if (copyFlag != _copyBookFlag.Value)
         {
             _copyBookFlag.Value = copyFlag;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         var reasearchFlag = GUILayout.Toggle(_reasearchFlag.Value, "研究一天");
         if (reasearchFlag != _reasearchFlag.Value)
         {
             _reasearchFlag.Value = reasearchFlag;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
@@ -205,13 +206,13 @@ public class Plugin : MelonMod
         if (teachNpc != _teachNPC.Value)
         {
             _teachNPC.Value = teachNpc;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         var teachNewSkillToNpc = GUILayout.Toggle(_teachNewSkillToNPC.Value, "传授满级");
         if (teachNewSkillToNpc != _teachNewSkillToNPC.Value)
         {
             _teachNewSkillToNPC.Value = teachNewSkillToNpc;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
@@ -220,13 +221,13 @@ public class Plugin : MelonMod
         if (explore != _explore.Value)
         {
             _explore.Value = explore;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         var interaction = GUILayout.Toggle(_interaction.Value, "真的无限交互");
         if (interaction != _interaction.Value)
         {
             _interaction.Value = interaction;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
@@ -235,13 +236,13 @@ public class Plugin : MelonMod
         if (redbook != _redBook.Value)
         {
             _redBook.Value = redbook;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         var redTreasure = GUILayout.Toggle(_redTreasure.Value, "必定是红色珍宝");
         if (redTreasure != _redTreasure.Value)
         {
             _redTreasure.Value = redTreasure;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
@@ -250,13 +251,13 @@ public class Plugin : MelonMod
         if (stealRate != _stealRate.Value)
         {
             _stealRate.Value = stealRate;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         var hgbj = GUILayout.Toggle(_hgbj.Value, "好感度不会减少");
         if (hgbj != _hgbj.Value)
         {
             _hgbj.Value = hgbj;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
@@ -265,23 +266,28 @@ public class Plugin : MelonMod
         if (cost0 != _cost0.Value)
         {
             _cost0.Value = cost0;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         var upgradeDay1 = GUILayout.Toggle(_upgradeDay1.Value, "建筑/升级/移动/拆除1天");
         if (upgradeDay1 != _upgradeDay1.Value)
         {
             _upgradeDay1.Value = upgradeDay1;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
-        var playerOutForceContribution = GUILayout.Toggle(_playerOutForceContribution.Value, "非本门功绩9999");
+        var playerOutForceContribution = GUILayout.Toggle(_playerOutForceContribution.Value, "门派功绩9999");
         if (playerOutForceContribution != _playerOutForceContribution.Value)
         {
             _playerOutForceContribution.Value = playerOutForceContribution;
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
-        
+        var jianBaoBool = GUILayout.Toggle(JianBaoFlag.Value, "一眼鉴宝");
+        if (jianBaoBool != JianBaoFlag.Value)
+        {
+            JianBaoFlag.Value = jianBaoBool;
+            _mainCategory?.SaveToFile();
+        }
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
         
@@ -292,6 +298,9 @@ public class Plugin : MelonMod
         GUILayout.Label("获得好感倍数：");
         _favorTimesInput ??= Convert.ToString(_favorTimes.Value);
         _favorTimesInput = GUILayout.TextField(_favorTimesInput);
+        GUILayout.Label("获得金钱倍数：");
+        _moneyTimes ??= Convert.ToString(MoneyTimes.Value);
+        _moneyTimes = GUILayout.TextField(_moneyTimes);
         GUILayout.EndHorizontal();
         
         GUILayout.Space(5);
@@ -387,7 +396,7 @@ public class Plugin : MelonMod
             _favorTimes.Value = int.Parse(_favorTimesInput);
             ChaneMaxNum();
             
-            _mainCategory.SaveToFile();
+            _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
@@ -418,40 +427,38 @@ public class Plugin : MelonMod
     private string? _shopLvRateInput;
     private string? _itemNumInput;
     private string? _favorTimesInput;
-    private List<float> _skillBaseNum = new List<float>() {12,10,8,6,4,2};
-    
-   
-   
+    private string? _moneyTimes;
+    private readonly List<float> _skillBaseNum = new List<float>() {12,10,8,6,4,2};
     
     // 刷新拍卖会
-    private void test1()
-    {
-        AuctionController auc = AuctionController.Instance;
-        PlotController plot = PlotController._instance;
-        if (auc == null || plot == null)
-        {
-            return;
-        }
-        
-        foreach (GameObject gm in auc.auctionItemIconList)
-        {
-            if (gm != null)
-                Object.Destroy(gm);
-        }
-        auc.auctionItemIconList.Clear();
-        
-        foreach (GameObject gm in auc.heroIconList)
-        {
-            if (gm != null)
-                Object.Destroy(gm);
-        }
-        auc.heroIconList.Clear();
-        
-        ItemListData itemListData = new ItemListData();
-        plot.GenerateAuctionItem(itemListData, auc.auctionDifficulty, null, -1);
-        auc.RestartAuction(auc.heroList, itemListData, auc.playerSellItem, 
-            auc.endMatchCallPlot, auc.auctionDifficulty, auc.havePlayer, auc.auctionKeeper);
-    }
+    // private void test1()
+    // {
+    //     AuctionController auc = AuctionController.Instance;
+    //     PlotController plot = PlotController._instance;
+    //     if (auc == null || plot == null)
+    //     {
+    //         return;
+    //     }
+    //     
+    //     foreach (GameObject gm in auc.auctionItemIconList)
+    //     {
+    //         if (gm != null)
+    //             Object.Destroy(gm);
+    //     }
+    //     auc.auctionItemIconList.Clear();
+    //     
+    //     foreach (GameObject gm in auc.heroIconList)
+    //     {
+    //         if (gm != null)
+    //             Object.Destroy(gm);
+    //     }
+    //     auc.heroIconList.Clear();
+    //     
+    //     ItemListData itemListData = new ItemListData();
+    //     plot.GenerateAuctionItem(itemListData, auc.auctionDifficulty, null, -1);
+    //     auc.RestartAuction(auc.heroList, itemListData, auc.playerSellItem, 
+    //         auc.endMatchCallPlot, auc.auctionDifficulty, auc.havePlayer, auc.auctionKeeper);
+    // }
     
 }
 

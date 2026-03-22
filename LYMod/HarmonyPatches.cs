@@ -1,41 +1,77 @@
-﻿namespace LYMod;
+﻿using UnityEngine;
+
+namespace LYMod;
 
 using HarmonyLib;
 using Il2Cpp;
 
+public class HeroTagIconControllerPatches
+{
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ManageTagController), nameof(ManageTagController.CheckMeetCondition))]
+    public static void ManageTagController_CheckMeetCondition_Postfix(ManageTagController __instance,
+        HeroData checkHero, HeroTagDataBase targetTag, ref bool __result)
+    {
+        if (__instance != null && TestElement.AnyTagFlag)
+        {
+            __result = true;
+        }
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ManageTagController), nameof(ManageTagController.CheckMeetOneCondition))]
+    public static void ManageTagController_CheckMeetOneCondition_Postfix(ManageTagController __instance,
+        HeroData checkHero, string requirement, ref bool __result)
+    {
+        if (__instance != null && TestElement.AnyTagFlag)
+        {
+            __result = true;
+        }
+    }
+
+}
+public class CraftPoisonUIControllerPatches
+{
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(CraftPoisonUIController), nameof(CraftPoisonUIController.GetCostTime))]
+    public static void CraftPoisonUIController_GetCostTime_Postfix(CraftPoisonUIController __instance, ref int __result)
+    {
+        if (__instance != null)
+            __result = 1;
+    }
+}
 public class AreaBuildingDataPatches
 {
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaRoadData), nameof(AreaRoadData.GetUpgradeTime))]
-    public static void AreaRoadData_GetUpgradeTime_Postfix(AreaRoadData __instance, ref int __result)
+    public static void AreaRoadData_GetUpgradeTime_Postfix(AreaRoadData? __instance, ref int __result)
     {
         if (__instance != null && Plugin.Instance._upgradeDay1.Value)
             __result = 1;
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetBuildTime))]
-    public static void AreaBuildingData_GetBuildTime_Postfix(AreaBuildingData __instance, ref int __result)
+    public static void AreaBuildingData_GetBuildTime_Postfix(AreaBuildingData? __instance, ref int __result)
     {
         if (__instance != null && Plugin.Instance._upgradeDay1.Value)
             __result = 1;
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetUpgradeTime))]
-    public static void AreaBuildingData_GetUpgradeTime_Postfix(AreaBuildingData __instance, ref int __result)
+    public static void AreaBuildingData_GetUpgradeTime_Postfix(AreaBuildingData? __instance, ref int __result)
     {
         if (__instance != null && Plugin.Instance._upgradeDay1.Value)
             __result = 1;
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetMoveTime))]
-    public static void AreaBuildingData_GetMoveTime_Postfix(AreaBuildingData __instance, ref int __result)
+    public static void AreaBuildingData_GetMoveTime_Postfix(AreaBuildingData? __instance, ref int __result)
     {
         if (__instance != null && Plugin.Instance._upgradeDay1.Value)
             __result = 1;
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetDestroyTime))]
-    public static void AreaBuildingData_GetDestroyTime_Postfix(AreaBuildingData __instance, ref int __result)
+    public static void AreaBuildingData_GetDestroyTime_Postfix(AreaBuildingData? __instance, ref int __result)
     {
         if (__instance != null && Plugin.Instance._upgradeDay1.Value)
              __result = 1;
@@ -52,11 +88,11 @@ public class BreakThroughChoiceControllerPatch
         {
             var heroSpeAddData = __instance.extraAddData.heroSpeAddData;
             
-            if (TestElement._breakFlag1)
+            if (TestElement.BreakFlag1)
             {
                 heroSpeAddData.Clear();
-                heroSpeAddData[int.Parse(TestElement._breakType)] = float.Parse(TestElement._breakValue);
-                TestElement._breakFlag1 = false;
+                heroSpeAddData[int.Parse(TestElement.BreakType)] = float.Parse(TestElement.BreakValue);
+                TestElement.BreakFlag1 = false;
             }
         }
         return true;
@@ -141,10 +177,19 @@ public class GameControllerPatches
 
 public class HeroDataPatch
 {
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeMoney))]
+    public static void HeroData_ChangeMoney_Prefix(HeroData __instance, ref int num, bool showInfo)
+    {
+        if (__instance != null && num > 0)
+        {
+            num *= Plugin.Instance.MoneyTimes.Value;
+        }
+    }
     
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetUpgradeForceLvNeedSkillNum))]
-    public static void HeroData_GetUpgradeForceLvNeedSkillNum_Prefix(HeroData __instance, ref int __result)
+    public static void HeroData_GetUpgradeForceLvNeedSkillNum_Postfix(HeroData __instance, ref int __result)
     {
         __result /= Plugin.Instance._maxSkillNum.Value;
     }
@@ -173,7 +218,7 @@ public class HeroDataPatch
             num = 0f;
         }
 
-        if (Plugin.Instance._favorTimes.Value > 1)
+        if (num > 0 && Plugin.Instance._favorTimes.Value > 1)
         {
             num *= Plugin.Instance._favorTimes.Value;
         }
@@ -190,6 +235,48 @@ public class HeroDataPatch
             num = 0f;
         }
         return true; 
+    }
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxAttri))]
+    public static void HeroData_GetMaxAttri_Postfix(HeroData __instance, int id, ref float __result)
+    {
+        if (__instance != null && Plugin.Instance.MaxBreak.Value)
+        {
+            __result = 999f;
+        }
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxFightSkill))]
+    public static void HeroData_GetMaxFightSkill_Postfix(HeroData __instance, int id, ref float __result)
+    {
+        if (__instance != null && Plugin.Instance.MaxBreak.Value)
+        {
+            __result = 999f;
+        }
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxLivingSkill))]
+    public static void HeroData_GetMaxLivingSkill_Postfix(HeroData __instance, int id, ref float __result)
+    {
+        if (__instance != null && Plugin.Instance.MaxBreak.Value)
+        {
+            __result = 999f;
+        }
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.RefreshMaxAttriAndSkill))]
+    public static void HeroData_RefreshMaxAttriAndSkill_Postfix(HeroData __instance)
+    {
+        if (__instance != null && Plugin.Instance.MaxBreak.Value)
+        {
+            for (int i = 0; i < __instance.maxAttri.Count; i++)
+            {
+                __instance.maxAttri[i] = 999;
+                __instance.maxFightSkill[i] = 999;
+                __instance.maxLivingSkill[i] = 999;
+            }
+        }
     }
 }
 
@@ -286,6 +373,35 @@ public class PlotControllerPatches
             }
         }
     }
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(PlotController), nameof(PlotController.ForceTeachNPCSure))]
+    public static void PlotController_ForceTeachNPCSure_Postfix(PlotController __instance, string skillIDParam)
+    {
+        if (__instance != null && Plugin.Instance._teachNPC.Value)
+        {
+            var a = __instance.targetInteractHero;
+            var b = a.FindSkill(int.Parse(skillIDParam));
+            for (int i = 0; i < 10; i++)
+            {
+                a.UpgradeSkill(b);
+            }
+        }
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(PlotController), nameof(PlotController.ForceTeachNewSkillToNPCSure))]
+    public static void PlotController_ForceTeachNewSkillToNPCSure_Postfix(PlotController __instance, string skillIDParam)
+    {
+        if (__instance != null && Plugin.Instance._teachNPC.Value)
+        {
+            var a = __instance.targetInteractHero;
+            var b = a.FindSkill(int.Parse(skillIDParam));
+            for (int i = 0; i < 10; i++)
+            {
+                a.UpgradeSkill(b);
+            }
+        }
+    }
 }
 
 public class ReadBookControllerPatches
@@ -318,7 +434,7 @@ public class ForceDataPatches
 {
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ForceData), nameof(ForceData.GetForceFavor))]
-    public static void ForceData_GetForceFavor_Postfix(ForceData __instance, int forceID)
+    public static void ForceData_GetForceFavor_Postfix(ForceData? __instance, int forceID)
     {
         if (__instance != null && Plugin.Instance._playerOutForceContribution.Value)
         {
@@ -327,7 +443,7 @@ public class ForceDataPatches
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ForceData), nameof(ForceData.GetNowResearchTech))]
-    public static void ForceData_GetNowResearchTech_Postfix(ForceData __instance, ForceTechLvData __result)
+    public static void ForceData_GetNowResearchTech_Postfix(ForceData? __instance, ForceTechLvData __result)
     {
         if (__instance != null && __result != null && Plugin.Instance._reasearchFlag.Value)
         {
@@ -392,6 +508,22 @@ public class ForceDataPatches
 
 public class ItemListDataPatches
 {
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ItemIconController), nameof(ItemIconController.Update))]
+    public static bool ItemIconController_Update_Prefix(ItemIconController __instance)
+    {
+        if (__instance != null && __instance.itemData.type == ItemType.Treasure)
+        {
+            var list = __instance.itemData.treasureData.treasureLv;
+            var list1 =  __instance.itemData.treasureData.playerGuessTreasureLv;
+            for (int i = 0; i < 4; i++)
+            {
+                list1[i].Clear();
+                list1[i].Add(list[i]);
+            }
+        }
+        return true;
+    }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ItemListData), nameof(ItemListData.GetItem), typeof(ItemData), typeof(bool))]
     public static void ItemListData_GetItem_Postfix(ItemListData? __instance, ItemData targetItem, bool showPopInfo = false)
@@ -405,19 +537,18 @@ public class ItemListDataPatches
                 targetItem = targetItem.SetBookData(targetItem.bookData.skillID, 5);
             }
 
-            if (targetItem.type == ItemType.Material && TestElement._redMaterial)
+            if (targetItem.type == ItemType.Material && TestElement.RedMaterial)
             {
                 targetItem.itemLv = 5;
                 targetItem.rareLv = 5;
                 
-                var inputBox = ParseInputBox(TestElement._materialAttr);
+                var inputBox = ParseInputBox(TestElement.MaterialAttr);
                 if (inputBox == null)
                     return;
                 var il2CppDictionary = ToIl2CppDictionary(inputBox);
                 if (il2CppDictionary == null)
                     return;
                 targetItem.materialData.extraAddData.heroSpeAddData = il2CppDictionary; 
-                TestElement._redMaterial = false;
             }
                
             if (targetItem.type == ItemType.Treasure && Plugin.Instance._redTreasure.Value)
@@ -434,7 +565,7 @@ public class ItemListDataPatches
     }
     
     // 输入框文本转字典
-    public static Dictionary<int, float>? ParseInputBox(string inputText)
+    private static Dictionary<int, float>? ParseInputBox(string inputText)
     {
         if (string.IsNullOrWhiteSpace(inputText)) 
             return null;
@@ -456,10 +587,10 @@ public class ItemListDataPatches
                 kv => float.Parse(kv[1])
             );
     }
-    public static Il2CppSystem.Collections.Generic.Dictionary<int, float>? ToIl2CppDictionary(Dictionary<int, float> systemDict)
+    private static Il2CppSystem.Collections.Generic.Dictionary<int, float>? ToIl2CppDictionary(Dictionary<int, float>? systemDict)
     {
         // 初始化 IL2CPP 字典
-        var il2cppDict = new Il2CppSystem.Collections.Generic.Dictionary<int, float>();
+        var il2CPPDict = new Il2CppSystem.Collections.Generic.Dictionary<int, float>();
 
         // 空值判断，避免崩溃
         if (systemDict == null || systemDict.Count == 0)
@@ -471,13 +602,13 @@ public class ItemListDataPatches
         foreach (var kvp in systemDict)
         {
             // 避免重复key（IL2CPP字典添加重复key会抛异常）
-            if (!il2cppDict.ContainsKey(kvp.Key))
+            if (!il2CPPDict.ContainsKey(kvp.Key))
             {
-                il2cppDict.Add(kvp.Key, kvp.Value);
+                il2CPPDict.Add(kvp.Key, kvp.Value);
             }
         }
 
-        return il2cppDict;
+        return il2CPPDict;
     }
 }
 

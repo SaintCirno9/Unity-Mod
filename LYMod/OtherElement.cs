@@ -28,6 +28,10 @@ public class OtherElement
         GUILayout.Label("17.测试内容2指定突破属性，根据属性id标签栏，数值自己测试");
         GUILayout.Label("18.测试内容3修改结义/友人/情侣上限");
         GUILayout.Label("19.测试内容4可以修改购买的材料属性了，格式已经给了，剩下的自己摸索吧，参考属性id");
+        GUILayout.Label("20.测试内容5马修改，必须先读取人物");
+        GUILayout.Label("21.测试内容6给读取到的人物加天赋点数，读取人物的属性上限，上限最大值999");
+        GUILayout.Label("22.添加一眼鉴宝，银两倍数");
+        GUILayout.Label("21.测试内容7无前置条件学习天赋");
         GUILayout.EndVertical();
         
     }
