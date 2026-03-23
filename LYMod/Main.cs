@@ -2,6 +2,7 @@
 using Il2Cpp;
 using LYMod;
 using MelonLoader;
+using Newtonsoft.Json;
 using UnityEngine;
 
 
@@ -13,7 +14,7 @@ namespace LYMod;
 public static class ModConstants
 {
     public const string ModName = "LYMod";     // 插件名
-    public const string ModVersion = "2.2.1";    // 版本号
+    public const string ModVersion = "2.4";    // 版本号
     public const string ModAuthor = "Can";     // 作者
 }
 
@@ -53,11 +54,13 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<bool> _playerOutForceContribution; //门派升级一天
     public MelonPreferences_Entry<bool> JianBaoFlag; //门派升级一天
     public MelonPreferences_Entry<bool> MaxBreak; //测试项-上限突破到999
+    public MelonPreferences_Entry<float> LivingSkillExpRate; //生活经验倍率
+    public MelonPreferences_Entry<int> MaxLivingSkillExpTimes; //生活潜力倍数
     
     // GUI状态
     private Vector2 mainScrollPos;
-    private Rect mainWindowRect = new(50, 50, 450, 550);
-    private int _hight = 480;
+    private Rect mainWindowRect = new(50, 100, 450, 570);
+    private int _hight = 500;
     private bool _showMainWindow = false;
     private readonly string[] tabNames = { "功能开关", "功能说明", "测试", "属性ID" };
     private int selectedTab;
@@ -81,6 +84,8 @@ public class Plugin : MelonMod
         _itemNum = _mainCategory.CreateEntry("itemNum", -1,  description: "拍卖会物品数量");
         _favorTimes = _mainCategory.CreateEntry("favorTimes", 1,  description: "好感倍数");
         MoneyTimes = _mainCategory.CreateEntry("MoneyTimes", 1,  description: "金钱倍数");
+        LivingSkillExpRate = _mainCategory.CreateEntry<float>("LivingSkillExpRate", 1, "生活经验倍率");
+        MaxLivingSkillExpTimes = _mainCategory.CreateEntry("MaxLivingSkillExpRate", 1, "生活经验倍率");
         
 
         MaxBreak = _mainCategory.CreateEntry("MaxBreak", false, "上限突破到999");
@@ -115,6 +120,7 @@ public class Plugin : MelonMod
         harmony.PatchAll(typeof(AreaBuildingDataPatches));
         harmony.PatchAll(typeof(CraftPoisonUIControllerPatches));
         harmony.PatchAll(typeof(HeroTagIconControllerPatches));
+        harmony.PatchAll(typeof(LivingSkillPatches));
         
         
         LOG.Msg("LYMod is loaded!左alt + e 打开窗体!");
@@ -129,7 +135,29 @@ public class Plugin : MelonMod
         if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.E))
         {
             _showMainWindow = !_showMainWindow;
+            var hero = HeroDetailController._instance;
+            if (hero != null && _showMainWindow && selectedTab == 2)
+            {
+                TestElement.HeroData = hero.nowShowHero;
+            }
         }
+
+        // if (Input.GetKey(KeyCode.BackQuote))
+        // {
+        //     LOG.Msg("111111");
+        //     var jsonStr = JsonConvert.SerializeObject(
+        //         GameDataController._instance.heroTagDataBase,
+        //         new JsonSerializerSettings
+        //         {
+        //             Formatting = Formatting.Indented,
+        //             ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+        //             // 强制忽略 IL2CPP 内部字段的序列化错误
+        //             Error = (sender, args) => args.ErrorContext.Handled = true
+        //         }
+        //     );
+        //     string savePath = Path.Combine(Environment.CurrentDirectory, "Data.json");
+        //     File.WriteAllText(savePath, jsonStr, System.Text.Encoding.UTF8);
+        // }
     }
 
     public override void OnGUI()
@@ -186,6 +214,7 @@ public class Plugin : MelonMod
         GUILayout.Label("<size=14><b>功能</b></size>");
         GUILayout.BeginVertical("Box");
         GUILayout.Space(5);
+        
         GUILayout.BeginHorizontal();
         var copyFlag = GUILayout.Toggle(_copyBookFlag.Value, "抄书一天");
         if (copyFlag != _copyBookFlag.Value)
@@ -201,6 +230,7 @@ public class Plugin : MelonMod
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
+        
         GUILayout.BeginHorizontal();
         var teachNpc = GUILayout.Toggle(_teachNPC.Value, "指点满级");
         if (teachNpc != _teachNPC.Value)
@@ -216,6 +246,7 @@ public class Plugin : MelonMod
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
+        
         GUILayout.BeginHorizontal();
         var explore = GUILayout.Toggle(_explore.Value, "探险耐力锁定");
         if (explore != _explore.Value)
@@ -231,6 +262,7 @@ public class Plugin : MelonMod
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
+        
         GUILayout.BeginHorizontal();
         var redbook = GUILayout.Toggle(_redBook.Value, "必定获得完本");
         if (redbook != _redBook.Value)
@@ -238,7 +270,7 @@ public class Plugin : MelonMod
             _redBook.Value = redbook;
             _mainCategory?.SaveToFile();
         }
-        var redTreasure = GUILayout.Toggle(_redTreasure.Value, "必定是红色珍宝");
+        var redTreasure = GUILayout.Toggle(_redTreasure.Value, "必定红色珍宝");
         if (redTreasure != _redTreasure.Value)
         {
             _redTreasure.Value = redTreasure;
@@ -246,6 +278,7 @@ public class Plugin : MelonMod
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
+        
         GUILayout.BeginHorizontal();
         var stealRate = GUILayout.Toggle(_stealRate.Value, "偷窃偷师必成功");
         if (stealRate != _stealRate.Value)
@@ -261,6 +294,7 @@ public class Plugin : MelonMod
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(5);
+        
         GUILayout.BeginHorizontal();
         var cost0 = GUILayout.Toggle(_cost0.Value, "建筑升级资源零消耗");
         if (cost0 != _cost0.Value)
@@ -275,6 +309,8 @@ public class Plugin : MelonMod
             _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
+        GUILayout.Space(5);
+        
         GUILayout.BeginHorizontal();
         var playerOutForceContribution = GUILayout.Toggle(_playerOutForceContribution.Value, "门派功绩9999");
         if (playerOutForceContribution != _playerOutForceContribution.Value)
@@ -290,8 +326,7 @@ public class Plugin : MelonMod
         }
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
-        
-        GUILayout.Space(10);
+        GUILayout.Space(5);
         
         GUILayout.BeginVertical("Box");
         GUILayout.BeginHorizontal();
@@ -302,85 +337,82 @@ public class Plugin : MelonMod
         _moneyTimes ??= Convert.ToString(MoneyTimes.Value);
         _moneyTimes = GUILayout.TextField(_moneyTimes);
         GUILayout.EndHorizontal();
-        
         GUILayout.Space(5);
         
         GUILayout.BeginHorizontal();
         GUILayout.Label("练功倍率：");
         _studyFightRateInput ??= Convert.ToString(_studyFightRate.Value, CultureInfo.InvariantCulture);
         _studyFightRateInput = GUILayout.TextField(_studyFightRateInput);
-        GUILayout.Space(5);
         GUILayout.Label("闭关倍率：");
         _studyUniqeRateInput ??= Convert.ToString(_studyUniqeRate.Value, CultureInfo.InvariantCulture);
         _studyUniqeRateInput = GUILayout.TextField(_studyUniqeRateInput);
         GUILayout.EndHorizontal();
         
         GUILayout.Space(5);
-        
         GUILayout.BeginHorizontal();
         GUILayout.Label("读书倍率：");
         _readBookRateInput ??= Convert.ToString(_readBook.Value, CultureInfo.InvariantCulture);
         _readBookRateInput = GUILayout.TextField(_readBookRateInput);
-        GUILayout.Space(5);
         GUILayout.Label("突破倍率：");
         _breakRateInput ??= Convert.ToString(_redBreak.Value, CultureInfo.InvariantCulture);
         _breakRateInput = GUILayout.TextField(_breakRateInput);
         GUILayout.EndHorizontal();
-        
         GUILayout.Space(5);
         
         GUILayout.BeginHorizontal();
         GUILayout.Label("队友离队天数：");
         _leaveDayInput ??= Convert.ToString(_leaveDay.Value);
         _leaveDayInput = GUILayout.TextField(_leaveDayInput);
-        GUILayout.Space(5);
         GUILayout.Label("天赋最大数量：");
         _tagMaxNumInput ??= Convert.ToString(_tagMaxNum.Value);
         _tagMaxNumInput = GUILayout.TextField(_tagMaxNumInput);
         GUILayout.EndHorizontal();
-        
         GUILayout.Space(5);
         
         GUILayout.BeginHorizontal();
         GUILayout.Label("物品负重倍率(0-1)：");
         _itemWeightRateInput ??= Convert.ToString(_weightRatio.Value, CultureInfo.InvariantCulture);
         _itemWeightRateInput = GUILayout.TextField(_itemWeightRateInput);
-        GUILayout.Space(5);
         GUILayout.Label("装备负重倍率(0-1)：");
         _equipWeightInput ??= Convert.ToString(_equipmentWeight.Value, CultureInfo.InvariantCulture);
         _equipWeightInput = GUILayout.TextField(_equipWeightInput);
         GUILayout.EndHorizontal();
-
         GUILayout.Space(5);
-            
+        
         GUILayout.BeginHorizontal();
         GUILayout.Label("拍卖会品质倍率：");
         _shopLvRateInput ??= Convert.ToString(_shopLvRate.Value, CultureInfo.InvariantCulture);
         _shopLvRateInput = GUILayout.TextField(_shopLvRateInput);
-        GUILayout.Space(5);
         GUILayout.Label("拍卖会物品数量：");
         _itemNumInput ??= Convert.ToString(_itemNum.Value);
         _itemNumInput = GUILayout.TextField(_itemNumInput);
         GUILayout.EndHorizontal();
-        
         GUILayout.Space(5);
         
         GUILayout.BeginHorizontal();
         GUILayout.Label("武学修习数量倍数：");
         _maxSkillNumInput ??= Convert.ToString(_maxSkillNum.Value);
         _maxSkillNumInput = GUILayout.TextField(_maxSkillNumInput);
-        GUILayout.Space(5);
         GUILayout.Label("烹饪铸造炼药倍率：");
         _pzqhInput ??= Convert.ToString(_pzqh.Value, CultureInfo.InvariantCulture);
         _pzqhInput = GUILayout.TextField(_pzqhInput);
         GUILayout.EndHorizontal();
-        
         GUILayout.Space(5);
         
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("生活经验倍率：");
+        _livingSkillExpRateInpute ??= Convert.ToString(LivingSkillExpRate.Value, CultureInfo.InvariantCulture);
+        _livingSkillExpRateInpute = GUILayout.TextField(_livingSkillExpRateInpute);
+        GUILayout.Label("生活潜力倍率：");
+        _maxLivingSkillExpRateInpute ??= Convert.ToString(MaxLivingSkillExpTimes.Value);
+        _maxLivingSkillExpRateInpute = GUILayout.TextField(_maxLivingSkillExpRateInpute);
+        GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
         GUILayout.Label("以上填写时务必确认后点击保存修改");
         if (GUILayout.Button("保存修改"))
         {
+            MaxLivingSkillExpTimes.Value = int.Parse(_maxLivingSkillExpRateInpute);
+            LivingSkillExpRate.Value = float.Parse(_livingSkillExpRateInpute);
             _readBook.Value = float.Parse(_readBookRateInput);
             _redBreak.Value = float.Parse(_breakRateInput);
             _weightRatio.Value = float.Parse(_itemWeightRateInput);
@@ -428,6 +460,8 @@ public class Plugin : MelonMod
     private string? _itemNumInput;
     private string? _favorTimesInput;
     private string? _moneyTimes;
+    private string? _livingSkillExpRateInpute;
+    private string? _maxLivingSkillExpRateInpute;
     private readonly List<float> _skillBaseNum = new List<float>() {12,10,8,6,4,2};
     
     // 刷新拍卖会

@@ -1,9 +1,34 @@
-﻿using UnityEngine;
-
-namespace LYMod;
+﻿namespace LYMod;
 
 using HarmonyLib;
 using Il2Cpp;
+
+public class LivingSkillPatches
+{
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeLivingSkillExp))]
+    public static bool HeroData_ChangeLivingSkillExp_Prefix(HeroData __instance, int id,
+        ref float num, bool showText)
+    {
+        if (__instance != null && num > 0 && Plugin.Instance.LivingSkillExpRate.Value > 0)
+        {
+            num *= Plugin.Instance.LivingSkillExpRate.Value;
+        }
+        return true;
+    }
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeMaxLivingSkill))]
+    public static bool HeroData_ChangeMaxLivingSkill_Prefix(HeroData __instance, int id, 
+        ref int num, bool showInfo)
+    {
+        if (__instance != null && num > 0 && Plugin.Instance.MaxLivingSkillExpTimes.Value > 0)
+        {
+            num *= Plugin.Instance.MaxLivingSkillExpTimes.Value;
+        }
+        return true;
+    }
+}
+
 
 public class HeroTagIconControllerPatches
 {
@@ -14,6 +39,8 @@ public class HeroTagIconControllerPatches
     {
         if (__instance != null && TestElement.AnyTagFlag)
         {
+            targetTag.oppositeMeaning = "";
+            targetTag.sameMeaning = "";
             __result = true;
         }
     }
@@ -27,7 +54,6 @@ public class HeroTagIconControllerPatches
             __result = true;
         }
     }
-
 }
 public class CraftPoisonUIControllerPatches
 {
@@ -241,16 +267,17 @@ public class HeroDataPatch
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxAttri))]
     public static void HeroData_GetMaxAttri_Postfix(HeroData __instance, int id, ref float __result)
     {
-        if (__instance != null && Plugin.Instance.MaxBreak.Value)
+        if (__instance != null && Plugin.Instance.MaxBreak.Value && 
+            float.Parse(TestElement.MaxBreakValue) > 120 && __instance.heroID == 0)
         {
-            __result = 999f;
+            __result = float.Parse(TestElement.MaxBreakValue);
         }
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxFightSkill))]
     public static void HeroData_GetMaxFightSkill_Postfix(HeroData __instance, int id, ref float __result)
     {
-        if (__instance != null && Plugin.Instance.MaxBreak.Value)
+        if (__instance != null && Plugin.Instance.MaxBreak.Value && __instance.heroID == 0)
         {
             __result = 999f;
         }
@@ -259,7 +286,7 @@ public class HeroDataPatch
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxLivingSkill))]
     public static void HeroData_GetMaxLivingSkill_Postfix(HeroData __instance, int id, ref float __result)
     {
-        if (__instance != null && Plugin.Instance.MaxBreak.Value)
+        if (__instance != null && Plugin.Instance.MaxBreak.Value && __instance.heroID == 0)
         {
             __result = 999f;
         }
@@ -512,7 +539,8 @@ public class ItemListDataPatches
     [HarmonyPatch(typeof(ItemIconController), nameof(ItemIconController.Update))]
     public static bool ItemIconController_Update_Prefix(ItemIconController __instance)
     {
-        if (__instance != null && __instance.itemData.type == ItemType.Treasure)
+        if (__instance != null && __instance.itemData.type == ItemType.Treasure 
+                               && Plugin.Instance.JianBaoFlag.Value)
         {
             var list = __instance.itemData.treasureData.treasureLv;
             var list1 =  __instance.itemData.treasureData.playerGuessTreasureLv;
@@ -521,6 +549,7 @@ public class ItemListDataPatches
                 list1[i].Clear();
                 list1[i].Add(list[i]);
             }
+            __instance.itemData.value = __instance.itemData.GetTreasureRealValue();
         }
         return true;
     }
@@ -534,7 +563,8 @@ public class ItemListDataPatches
 
             if (targetItem.type == ItemType.Book && Plugin.Instance._redBook.Value)
             {
-                targetItem = targetItem.SetBookData(targetItem.bookData.skillID, 5);
+                // targetItem = targetItem.SetBookData(targetItem.bookData.skillID, 5);
+                targetItem.rareLv = 5;
             }
 
             if (targetItem.type == ItemType.Material && TestElement.RedMaterial)
@@ -560,6 +590,7 @@ public class ItemListDataPatches
                 }
                 targetItem.itemLv = 5;
                 targetItem.rareLv = 5;
+                targetItem.value = targetItem.GetTreasureRealValue();
             }
         }
     }
