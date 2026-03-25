@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using Il2Cpp;
+using Il2CppConsolation;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using LYMod;
 using MelonLoader;
@@ -179,9 +180,19 @@ public class Plugin : MelonMod
             }
         }
 
-        // if (Input.GetKey(KeyCode.BackQuote))
+        // if (Input.GetKeyDown(KeyCode.BackQuote))
         // {
-        //     HeroData hd = GameDataController.Instance.gameSaveData.WorldData.Player();
+        //     // HeroData hd = GameDataController.Instance.gameSaveData.WorldData.Player();
+        //    
+        //     var areaDataBases = GameDataController._instance.areaDataBase;
+        //     var areaData = areaDataBases[55];
+        //     
+        //     LOG.Msg($"areaData---{areaData.areaID}---{areaData.areaName}");
+        //     foreach (var atd in areaData.areaTiles)
+        //     {
+        //         LOG.Msg($"atd.areaID:{atd.areaID}==={atd.column}==={atd.row}");
+        //     }
+        //     // GameController._instance.LoadAreaMapData(areaData);
         // }
         
         // if (Input.GetKey(KeyCode.BackQuote))
