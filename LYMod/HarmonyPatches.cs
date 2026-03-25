@@ -3,6 +3,48 @@
 using HarmonyLib;
 using Il2Cpp;
 
+
+ public class IdentifyMatchControllerPatches
+ {
+     [HarmonyPrefix]
+     [HarmonyPatch(typeof(IdentifyMatchController), nameof(IdentifyMatchController.SureButtonClicked))]
+     public static bool IdentifyMatchController_SureButtonClicked_Prefix(IdentifyMatchController __instance)
+     {
+         if (__instance != null && __instance.identifyMatchUIPanel != null && Plugin.Instance.AutoJianBaoFlag.Value)
+         {
+             List<float> list = new List<float>();
+             var il2CppArrayBase = __instance.identifyMatchUIPanel.GetComponentsInChildren<ItemIconController>();
+             if (il2CppArrayBase != null && il2CppArrayBase.Length > 0)
+             {
+                 foreach (ItemIconController itemIconController in il2CppArrayBase)
+                 {
+                     if (itemIconController != null && itemIconController.itemData != null)
+                     {
+                         list.Add(itemIconController.itemData.GetTreasureRealValue());
+                     }
+                 }
+                 int index = list.IndexOf(list.Max());
+                 __instance.SetNowChooseTreasure(il2CppArrayBase[index].gameObject);
+             }
+         }
+         return true;
+     }
+ }
+
+public class AreaBuildControllerPatches
+{
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildController), nameof(AreaBuildController.BuildModeButtonClicked))]
+    public static void AreaBuildController_BuildModeButtonClicked_Postfix(
+        AreaBuildController __instance)
+    {
+        if (__instance != null && Plugin.Instance.MaxSpeBuildingNum.Value > 5)
+        {
+            AreaBuildController.MaxSpeBuildingNum = Plugin.Instance.MaxSpeBuildingNum.Value;
+        }
+    }
+}
+
 public class LivingSkillPatches
 {
     [HarmonyPrefix]
@@ -106,6 +148,26 @@ public class AreaBuildingDataPatches
 // 指定突破加的什么属性
 public class BreakThroughChoiceControllerPatch
 {
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(KungfuSkillLvData), nameof(KungfuSkillLvData.GetBreakThroughAvailableChoice))]
+    public static void KungfuSkillLvData_GetBreakThroughAvailableChoice_Postfix(KungfuSkillLvData __instance,
+        Il2CppSystem.Collections.Generic.List<int> __result)
+    {
+        if (__instance != null && __result != null && TestElement.BreakChoiceFlag && 
+            !string.IsNullOrEmpty(TestElement.BreakChoiceListStr))
+        {
+            var list = new List<int>(
+                TestElement.BreakChoiceListStr
+                    .Split(new[] { ',' }, System.StringSplitOptions.RemoveEmptyEntries) // 过滤空字符串
+                    .Select(s => int.TryParse(s.Trim(), out int val) ? val : (int?)null) // 去空格 + 安全解析
+                    .Where(val => val.HasValue) // 只保留解析成功的值
+                    .Select(val => val.Value)
+            );
+            __result.Clear();
+            list.ForEach(__result.Add);
+        }
+    }
+    
     [HarmonyPrefix]
     [HarmonyPatch(typeof(BreakThroughChoiceController), nameof(BreakThroughChoiceController.OnClick))]
     public static bool BreakThroughChoiceController_OnClick_Postfix(BreakThroughChoiceController __instance)
@@ -203,14 +265,25 @@ public class GameControllerPatches
 
 public class HeroDataPatch
 {
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxFavor))]
+    public static void HeroData_GetMaxFavor_Postfix(HeroData __instance, float maxFavor, 
+        ref float __result)
+    {
+        if (__instance != null) 
+            __result = Plugin.Instance.FavorMax.Value;
+    }
+    
     [HarmonyPrefix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeMoney))]
-    public static void HeroData_ChangeMoney_Prefix(HeroData __instance, ref int num, bool showInfo)
+    public static bool HeroData_ChangeMoney_Prefix(HeroData __instance, ref int num, bool showInfo)
     {
-        if (__instance != null && num > 0)
+        if (__instance != null && num > 0 && __instance.heroID == 0)
         {
             num *= Plugin.Instance.MoneyTimes.Value;
         }
+        return true;
     }
     
     [HarmonyPostfix]
@@ -267,41 +340,76 @@ public class HeroDataPatch
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxAttri))]
     public static void HeroData_GetMaxAttri_Postfix(HeroData __instance, int id, ref float __result)
     {
-        if (__instance != null && Plugin.Instance.MaxBreak.Value && 
-            float.Parse(TestElement.MaxBreakValue) > 120 && __instance.heroID == 0)
+        if (__instance != null)
         {
-            __result = float.Parse(TestElement.MaxBreakValue);
+            if (Plugin.Instance.MaxBreak.Value && __instance.heroID == 0)
+            {
+                __result = Plugin.Instance.MaxBreakValue.Value;
+            }
+            if (Plugin.Instance.NpcMaxBreak.Value && __instance.heroID != 0)
+            {
+                __result = Plugin.Instance.NpcMaxBreakValue.Value;
+            }
         }
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxFightSkill))]
     public static void HeroData_GetMaxFightSkill_Postfix(HeroData __instance, int id, ref float __result)
     {
-        if (__instance != null && Plugin.Instance.MaxBreak.Value && __instance.heroID == 0)
+        if (__instance != null)
         {
-            __result = 999f;
+            if (Plugin.Instance.MaxBreak.Value && __instance.heroID == 0)
+            {
+                __result = Plugin.Instance.MaxBreakValue.Value;
+            }
+            if (Plugin.Instance.NpcMaxBreak.Value && __instance.heroID != 0)
+            {
+                __result = Plugin.Instance.NpcMaxBreakValue.Value;
+            }
         }
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetMaxLivingSkill))]
     public static void HeroData_GetMaxLivingSkill_Postfix(HeroData __instance, int id, ref float __result)
     {
-        if (__instance != null && Plugin.Instance.MaxBreak.Value && __instance.heroID == 0)
+        if (__instance != null)
         {
-            __result = 999f;
+            if (Plugin.Instance.MaxBreak.Value && __instance.heroID == 0)
+            {
+                __result = Plugin.Instance.MaxBreakValue.Value;
+            }
+            if (Plugin.Instance.NpcMaxBreak.Value && __instance.heroID != 0)
+            {
+                __result = Plugin.Instance.NpcMaxBreakValue.Value;
+            }
         }
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.RefreshMaxAttriAndSkill))]
     public static void HeroData_RefreshMaxAttriAndSkill_Postfix(HeroData __instance)
     {
-        if (__instance != null && Plugin.Instance.MaxBreak.Value)
+        
+        if (__instance != null)
         {
+            bool isPlayerBreakEnabled = Plugin.Instance.MaxBreak.Value;
+            bool isNpcBreakEnabled = Plugin.Instance.NpcMaxBreak.Value;
+            float playerBreakValue = Plugin.Instance.MaxBreakValue.Value;
+            float npcBreakValue = Plugin.Instance.NpcMaxBreakValue.Value;
+            
             for (int i = 0; i < __instance.maxAttri.Count; i++)
             {
-                __instance.maxAttri[i] = 999;
-                __instance.maxFightSkill[i] = 999;
-                __instance.maxLivingSkill[i] = 999;
+                if (isPlayerBreakEnabled && __instance.heroID == 0)
+                {
+                    __instance.maxAttri[i] = playerBreakValue;
+                    __instance.maxFightSkill[i] = playerBreakValue;
+                    __instance.maxLivingSkill[i] = playerBreakValue;
+                }
+                if (isNpcBreakEnabled && __instance.heroID != 0)
+                {
+                    __instance.maxAttri[i] = npcBreakValue;
+                    __instance.maxFightSkill[i] = npcBreakValue;
+                    __instance.maxLivingSkill[i] = npcBreakValue;
+                }
             }
         }
     }
@@ -352,9 +460,11 @@ public class PlotControllerPatches
     
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.GetStealNpcSkillSuccessRate))]
     [HarmonyPostfix]
-    public static void PlotController_GetStealNpcSkillSuccessRate_Postfix(ref float __result)
+    public static void PlotController_GetStealNpcSkillSuccessRate_Postfix(PlotController __instance,
+        ref float __result)
     {
-        if (Plugin.Instance._stealRate.Value)
+        if (__instance != null && Plugin.Instance._stealRate.Value 
+                               && __instance.targetInteractHero.heroID != 0)
         {
             __result = 1f;
         }
@@ -362,9 +472,11 @@ public class PlotControllerPatches
     
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.GetStealNpcSuccessRate))]
     [HarmonyPostfix]
-    public static void PlotController_GetStealNpcSuccessRate_Postfix(ref float __result)
+    public static void PlotController_GetStealNpcSuccessRate_Postfix(PlotController __instance,
+        ref float __result)
     {
-        if (Plugin.Instance._stealRate.Value)
+        if (__instance != null && Plugin.Instance._stealRate.Value 
+                               && __instance.targetInteractHero.heroID != 0)
         {
             __result = 1f;
         }
@@ -535,6 +647,7 @@ public class ForceDataPatches
 
 public class ItemListDataPatches
 {
+    
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ItemIconController), nameof(ItemIconController.Update))]
     public static bool ItemIconController_Update_Prefix(ItemIconController __instance)
@@ -549,22 +662,22 @@ public class ItemListDataPatches
                 list1[i].Clear();
                 list1[i].Add(list[i]);
             }
-            __instance.itemData.value = __instance.itemData.GetTreasureRealValue();
+            // __instance.itemData.value = __instance.itemData.GetTreasureRealValue();
         }
         return true;
     }
+    
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ItemListData), nameof(ItemListData.GetItem), typeof(ItemData), typeof(bool))]
     public static void ItemListData_GetItem_Postfix(ItemListData? __instance, ItemData targetItem, bool showPopInfo = false)
     {
-        if (__instance != null)
+        if (__instance?.GetHero() != null && __instance.GetHero().heroID == 0)
         {
             __instance.weight *= Plugin.Instance._weightRatio.Value;
 
             if (targetItem.type == ItemType.Book && Plugin.Instance._redBook.Value)
             {
-                // targetItem = targetItem.SetBookData(targetItem.bookData.skillID, 5);
-                targetItem.rareLv = 5;
+                targetItem = targetItem.SetBookData(targetItem.bookData.skillID, 5);
             }
 
             if (targetItem.type == ItemType.Material && TestElement.RedMaterial)
@@ -645,28 +758,15 @@ public class ItemListDataPatches
 
 public class BreakThroughControllerPatches
 {
-    [HarmonyPatch(typeof(BreakThroughController), nameof(BreakThroughController.BreakBookChoose))]
+    [HarmonyPatch(typeof(BreakThroughController), nameof(BreakThroughController.GetScoreRate))]
     [HarmonyPostfix]
-    public static void BreakThroughController_BreakBookChoose_Postfix(BreakThroughController __instance)
-    {
-        if (__instance != null ) 
-            __instance.baseScoreRate *= Plugin.Instance._redBreak.Value;
-    }
-
-    [HarmonyPatch(typeof(BreakThroughController), nameof(BreakThroughController.BreakFoodChoose))]
-    [HarmonyPostfix]
-    public static void BreakThroughController_BreakFoodChoose_Postfix(BreakThroughController __instance)
+    public static void BreakThroughController_GetScoreRate_Postfix(BreakThroughController __instance,
+        ref float __result)
     {
         if (__instance != null)
-            __instance.baseScoreRate *= Plugin.Instance._redBreak.Value;
-    }
-
-    [HarmonyPatch(typeof(BreakThroughController), nameof(BreakThroughController.BreakMedChoose))]
-    [HarmonyPostfix]
-    public static void BreakThroughController_BreakMedChoose_Postfix(BreakThroughController __instance)
-    {
-        if (__instance != null) 
-            __instance.baseScoreRate *= Plugin.Instance._redBreak.Value;
+        {
+            __result *= Plugin.Instance._redBreak.Value;
+        }
     }
 }
 

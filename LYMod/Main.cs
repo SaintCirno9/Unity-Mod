@@ -1,12 +1,13 @@
 ﻿using System.Globalization;
 using Il2Cpp;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using LYMod;
 using MelonLoader;
-using Newtonsoft.Json;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 
-[assembly: MelonInfo(typeof(LYMod.Plugin), ModConstants.ModName, ModConstants.ModVersion, ModConstants.ModAuthor)]
+[assembly: MelonInfo(typeof(Plugin), ModConstants.ModName, ModConstants.ModVersion, ModConstants.ModAuthor)]
 [assembly:MelonGame("TppStudio", "LongYinLiZhiZhuan")]
 [assembly:MelonPlatformDomain(MelonPlatformDomainAttribute.CompatibleDomains.IL2CPP)]
 namespace LYMod;
@@ -14,7 +15,7 @@ namespace LYMod;
 public static class ModConstants
 {
     public const string ModName = "LYMod";     // 插件名
-    public const string ModVersion = "2.4";    // 版本号
+    public const string ModVersion = "2.7";    // 版本号
     public const string ModAuthor = "Can";     // 作者
 }
 
@@ -51,20 +52,26 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<int> _favorTimes; //好感倍数
     public MelonPreferences_Entry<int> MoneyTimes; //金钱倍数
     public MelonPreferences_Entry<bool> _upgradeDay1; //门派升级一天
-    public MelonPreferences_Entry<bool> _playerOutForceContribution; //门派升级一天
-    public MelonPreferences_Entry<bool> JianBaoFlag; //门派升级一天
+    public MelonPreferences_Entry<bool> _playerOutForceContribution; //非本门功绩
+    public MelonPreferences_Entry<bool> JianBaoFlag; //一眼鉴宝
     public MelonPreferences_Entry<bool> MaxBreak; //测试项-上限突破到999
+    public MelonPreferences_Entry<float> MaxBreakValue; //测试项-玩家上限突破值
+    public MelonPreferences_Entry<bool> NpcMaxBreak; // 测试项-NPC上限突破到999
+    public MelonPreferences_Entry<float> NpcMaxBreakValue; //测试项-Npc上限突破值
     public MelonPreferences_Entry<float> LivingSkillExpRate; //生活经验倍率
     public MelonPreferences_Entry<int> MaxLivingSkillExpTimes; //生活潜力倍数
+    public MelonPreferences_Entry<float> FavorMax; //最大好感度
+    public MelonPreferences_Entry<int> MaxSpeBuildingNum; //最大特殊建筑数
+    public MelonPreferences_Entry<bool> AutoJianBaoFlag; //自动鉴宝
     
     // GUI状态
     private Vector2 mainScrollPos;
-    private Rect mainWindowRect = new(50, 100, 450, 570);
-    private int _hight = 500;
+    private Rect mainWindowRect = new(50, 100, 450, 610);
+    private int _hight = 540;
     private bool _showMainWindow = false;
-    private readonly string[] tabNames = { "功能开关", "功能说明", "测试", "属性ID" };
+    private readonly string[] tabNames = { "功能开关", "测试", "属性ID" };
     private int selectedTab;
-    
+
     public override void OnInitializeMelon()
     {
         Instance = this;
@@ -85,10 +92,14 @@ public class Plugin : MelonMod
         _favorTimes = _mainCategory.CreateEntry("favorTimes", 1,  description: "好感倍数");
         MoneyTimes = _mainCategory.CreateEntry("MoneyTimes", 1,  description: "金钱倍数");
         LivingSkillExpRate = _mainCategory.CreateEntry<float>("LivingSkillExpRate", 1, "生活经验倍率");
-        MaxLivingSkillExpTimes = _mainCategory.CreateEntry("MaxLivingSkillExpRate", 1, "生活经验倍率");
+        MaxLivingSkillExpTimes = _mainCategory.CreateEntry("MaxLivingSkillExpRate", 1, "生活潜力倍率");
+        MaxBreakValue = _mainCategory.CreateEntry<float>("MaxBreakValue", 999, "玩家上限突破到的值");
+        NpcMaxBreakValue = _mainCategory.CreateEntry<float>("NpcMaxBreakValue", 999, "NPC上限突破到的值");
+        FavorMax = _mainCategory.CreateEntry<float>("FavorMax", 100, "最大好感度");
+        MaxSpeBuildingNum = _mainCategory.CreateEntry("MaxSpeBuildingNum", 5, "特殊建筑限制数");
         
-
-        MaxBreak = _mainCategory.CreateEntry("MaxBreak", false, "上限突破到999");
+        NpcMaxBreak = _mainCategory.CreateEntry("NpcMaxBreak", false, "NPC上限突破到999");
+        MaxBreak = _mainCategory.CreateEntry("MaxBreak", false, "玩家上限突破到999");
         _playerOutForceContribution = _mainCategory.CreateEntry("playerOutForceContribution", false, "非本门功绩");
         _upgradeDay1 = _mainCategory.CreateEntry("upgrade1", false, "升级一天");
         _copyBookFlag = _mainCategory.CreateEntry("copyBookFlag", false, "抄书一天");
@@ -103,6 +114,7 @@ public class Plugin : MelonMod
         _cost0 = _mainCategory.CreateEntry("cost0", true,  description: "建筑升级资源零消耗");
         _redTreasure = _mainCategory.CreateEntry("redTreasure", false,  description: "必定是红色珍宝慎用");
         JianBaoFlag = _mainCategory.CreateEntry("JianBaoFlag", false,  description: "一眼看穿宝物品质");
+        AutoJianBaoFlag = _mainCategory.CreateEntry("AutoJianBaoFlag", false,  description: "自动鉴宝");
         
         var harmony = new HarmonyLib.Harmony("LYMod");
         harmony.PatchAll(typeof(ReadBookControllerPatches));
@@ -121,27 +133,57 @@ public class Plugin : MelonMod
         harmony.PatchAll(typeof(CraftPoisonUIControllerPatches));
         harmony.PatchAll(typeof(HeroTagIconControllerPatches));
         harmony.PatchAll(typeof(LivingSkillPatches));
-        
-        
+        harmony.PatchAll(typeof(AreaBuildControllerPatches));
+        harmony.PatchAll(typeof(IdentifyMatchControllerPatches));
         LOG.Msg("LYMod is loaded!左alt + e 打开窗体!");
-        
         ChaneMaxNum();
-       
     }
    
     public override void OnUpdate()
     {
+        // HeroData hd = GameDataController.Instance?.gameSaveData?.WorldData?.Player();
+        // if (hd?.itemListData != null)
+        // {
+        //     hd.itemListData.maxWeight = 99999;
+        // }
+        
         // 左alt + e 打开窗体
         if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.E))
         {
             _showMainWindow = !_showMainWindow;
             var hero = HeroDetailController._instance;
-            if (hero != null && _showMainWindow && selectedTab == 2)
+            if (hero != null && _showMainWindow && selectedTab == 1)
             {
                 TestElement.HeroData = hero.nowShowHero;
+                TestElement.LoadHorseData();
             }
         }
 
+        // 按R刷突破
+        if (Input.GetKeyDown(KeyCode.R) && _reBreakValue)
+        {
+            BreakThroughController instance = BreakThroughController.Instance;
+            if (instance != null && instance.breakThroughPanel != null && instance.breakThroughPanel.activeInHierarchy
+                && instance.breakThroughPos != null && instance.breakThroughPos.transform.childCount > 0)
+            {
+                Il2CppArrayBase<BreakThroughChoiceController> componentsInChildren = instance.breakThroughPos
+                    .GetComponentsInChildren<BreakThroughChoiceController>();
+                foreach (BreakThroughChoiceController breakThroughChoiceController in componentsInChildren)
+                {
+                    if (breakThroughChoiceController != null && breakThroughChoiceController.gameObject != null)
+                    {
+                        Object.Destroy(breakThroughChoiceController.gameObject);
+                    }
+                }
+                instance.StartShowBreakChoice();
+            }
+        }
+
+        // if (Input.GetKey(KeyCode.BackQuote))
+        // {
+        //     HeroData hd = GameDataController.Instance.gameSaveData.WorldData.Player();
+        // }
+        
         // if (Input.GetKey(KeyCode.BackQuote))
         // {
         //     LOG.Msg("111111");
@@ -192,13 +234,10 @@ public class Plugin : MelonMod
             case 0: // 功能
                 DrawMainTab();
                 break;
-            case 1: // 功能说明
-                OtherElement.DrawInfoTab();
-                break;
-            case 2:// 测试
+            case 1:// 测试
                 TestElement.TestTab(); 
                 break;
-            case 3: //属性id
+            case 2: //属性id
                 OtherElement.Label();
                 break;
         }
@@ -211,7 +250,6 @@ public class Plugin : MelonMod
 
     private void DrawMainTab()
     {
-        GUILayout.Label("<size=14><b>功能</b></size>");
         GUILayout.BeginVertical("Box");
         GUILayout.Space(5);
         
@@ -302,7 +340,7 @@ public class Plugin : MelonMod
             _cost0.Value = cost0;
             _mainCategory?.SaveToFile();
         }
-        var upgradeDay1 = GUILayout.Toggle(_upgradeDay1.Value, "建筑/升级/移动/拆除1天");
+        var upgradeDay1 = GUILayout.Toggle(_upgradeDay1.Value, "建筑升级移动拆除1天");
         if (upgradeDay1 != _upgradeDay1.Value)
         {
             _upgradeDay1.Value = upgradeDay1;
@@ -324,6 +362,17 @@ public class Plugin : MelonMod
             JianBaoFlag.Value = jianBaoBool;
             _mainCategory?.SaveToFile();
         }
+        GUILayout.EndHorizontal();
+        GUILayout.Space(5);
+        
+        GUILayout.BeginHorizontal();
+        var autoJianBaoFlag = GUILayout.Toggle(AutoJianBaoFlag.Value, "卖艺自动鉴宝");
+        if (autoJianBaoFlag != AutoJianBaoFlag.Value)
+        {
+            AutoJianBaoFlag.Value = autoJianBaoFlag;
+            _mainCategory?.SaveToFile();
+        }
+        _reBreakValue = GUILayout.Toggle(_reBreakValue, "按R键刷新突破");
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
         GUILayout.Space(5);
@@ -407,10 +456,24 @@ public class Plugin : MelonMod
         _maxLivingSkillExpRateInpute ??= Convert.ToString(MaxLivingSkillExpTimes.Value);
         _maxLivingSkillExpRateInpute = GUILayout.TextField(_maxLivingSkillExpRateInpute);
         GUILayout.EndHorizontal();
+        GUILayout.Space(5);
+        
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("好感度上限修改：");
+        _favorMaxInput ??= Convert.ToString(FavorMax.Value, CultureInfo.InvariantCulture);
+        _favorMaxInput = GUILayout.TextField(_favorMaxInput);
+        GUILayout.Label("特殊建筑上限数：");
+        _maxSpeBuildingNum ??= Convert.ToString(MaxSpeBuildingNum.Value);
+        _maxSpeBuildingNum = GUILayout.TextField(_maxSpeBuildingNum);
+        GUILayout.EndHorizontal();
+        
         GUILayout.BeginHorizontal();
         GUILayout.Label("以上填写时务必确认后点击保存修改");
         if (GUILayout.Button("保存修改"))
         {
+            MaxSpeBuildingNum.Value = int.Parse(_maxSpeBuildingNum);
+            FavorMax.Value = float.Parse(_favorMaxInput);
+            MoneyTimes.Value = int.Parse(_moneyTimes);
             MaxLivingSkillExpTimes.Value = int.Parse(_maxLivingSkillExpRateInpute);
             LivingSkillExpRate.Value = float.Parse(_livingSkillExpRateInpute);
             _readBook.Value = float.Parse(_readBookRateInput);
@@ -462,6 +525,10 @@ public class Plugin : MelonMod
     private string? _moneyTimes;
     private string? _livingSkillExpRateInpute;
     private string? _maxLivingSkillExpRateInpute;
+    private string? _favorMaxInput;
+    private string? _maxSpeBuildingNum;
+    private bool _reBreakValue = false;
+    
     private readonly List<float> _skillBaseNum = new List<float>() {12,10,8,6,4,2};
     
     // 刷新拍卖会
