@@ -16,7 +16,7 @@ namespace LYMod;
 public static class ModConstants
 {
     public const string ModName = "LYMod";     // 插件名
-    public const string ModVersion = "3.0.2";    // 版本号
+    public const string ModVersion = "3.0.6";    // 版本号
     public const string ModAuthor = "Can";     // 作者
 }
 
@@ -180,7 +180,7 @@ public class Plugin : MelonMod
             var hero = HeroDetailController._instance;
             if (hero != null && ShowMainWindow)
             {
-                TestElement.HeroData = hero.nowShowHero;
+                TestElement.ReadedHeroData = hero.nowShowHero;
                 TestElement.LoadHorseData();
             }
         }
@@ -192,6 +192,7 @@ public class Plugin : MelonMod
             TryCraftRoll();
             TryAuctionRoll();
             TryZhangyuanRoll();
+            
         }
         
         
@@ -530,6 +531,8 @@ public class Plugin : MelonMod
         GUILayout.Label("以上填写时务必确认后点击保存修改");
         if (GUILayout.Button("保存修改"))
         {
+            PoisonRate.Value = float.Parse(_poisonRateInput);
+            PoisonReduceRate.Value = float.Parse(_poisonReduceRateInput);
             ChanDaoRate.Value = float.Parse(_chanDaoRateInput);
             ZhongyuanLy.Value = float.Parse(_zhongyuanLvInput);
             BattleChangeSkillFightRate.Value = float.Parse(_battleChangeSkillFightRateInput);

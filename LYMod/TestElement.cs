@@ -7,7 +7,7 @@ namespace LYMod;
 public class TestElement
 {
     public static string MaterialAttr = "6=20;70=0.2;131=0.2;132=0.2";
-    public static HeroData? HeroData;
+    public static HeroData? ReadedHeroData;
     public static bool BreakFlag1 = false;
     public static string BreakType = "0";
     public static string BreakValue = "5";
@@ -38,27 +38,27 @@ public class TestElement
             var hdc = HeroDetailController._instance;
             if (hdc != null)
             {
-                HeroData = hdc.nowShowHero;
+                ReadedHeroData = hdc.nowShowHero;
                 LoadHorseData();
             }
         }
-        GUILayout.Label("人物：" + HeroData?.heroName + ": " + HeroData?.heroID);
-        GUILayout.Label("成长值：" + HeroData?.talent);
-        if (GUILayout.Button("+") && HeroData != null)
+        GUILayout.Label("人物：" + ReadedHeroData?.heroName + ": " + ReadedHeroData?.heroID);
+        GUILayout.Label("成长值：" + ReadedHeroData?.talent);
+        if (GUILayout.Button("+") && ReadedHeroData != null)
         {
-            HeroData.talent += 1;
+            ReadedHeroData.talent += 1;
         }
-        if (GUILayout.Button("-") && HeroData != null)
+        if (GUILayout.Button("-") && ReadedHeroData != null)
         {
-            HeroData.talent -= 1;
+            ReadedHeroData.talent -= 1;
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(10);
 
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("天赋点数999") && HeroData != null)
+        if (GUILayout.Button("天赋点数999") && ReadedHeroData != null)
         {
-            HeroData.ChangeTagPoint(999, true);
+            ReadedHeroData.ChangeTagPoint(999, true);
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(10);
@@ -90,24 +90,24 @@ public class TestElement
         GUILayout.Space(10);
 
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("保存马和马鞍的数据") && HeroData != null && HeroData.horse != null)
+        if (GUILayout.Button("保存马和马鞍的数据") && ReadedHeroData != null && ReadedHeroData.horse != null)
         {
-            HeroData.horseArmor.horseData.speed = float.Parse(_horseArmorSpeed, CultureInfo.InvariantCulture);
-            HeroData.horseArmor.horseData.sprint = float.Parse(_horseArmorSprint, CultureInfo.InvariantCulture);
-            HeroData.horseArmor.horseData.power = float.Parse(_horseArmorPower, CultureInfo.InvariantCulture);
-            HeroData.horseArmor.horseData.resist = float.Parse(_horseArmorResist, CultureInfo.InvariantCulture);
-            HeroData.horse.horseData.speed = float.Parse(_horseSpeed, CultureInfo.InvariantCulture);
-            HeroData.horse.horseData.sprint = float.Parse(_horseSprint, CultureInfo.InvariantCulture);
-            HeroData.horse.horseData.power = float.Parse(_horsePower, CultureInfo.InvariantCulture);
-            HeroData.horse.horseData.resist = float.Parse(_horseResist, CultureInfo.InvariantCulture);
+            ReadedHeroData.horseArmor.horseData.speed = float.Parse(_horseArmorSpeed, CultureInfo.InvariantCulture);
+            ReadedHeroData.horseArmor.horseData.sprint = float.Parse(_horseArmorSprint, CultureInfo.InvariantCulture);
+            ReadedHeroData.horseArmor.horseData.power = float.Parse(_horseArmorPower, CultureInfo.InvariantCulture);
+            ReadedHeroData.horseArmor.horseData.resist = float.Parse(_horseArmorResist, CultureInfo.InvariantCulture);
+            ReadedHeroData.horse.horseData.speed = float.Parse(_horseSpeed, CultureInfo.InvariantCulture);
+            ReadedHeroData.horse.horseData.sprint = float.Parse(_horseSprint, CultureInfo.InvariantCulture);
+            ReadedHeroData.horse.horseData.power = float.Parse(_horsePower, CultureInfo.InvariantCulture);
+            ReadedHeroData.horse.horseData.resist = float.Parse(_horseResist, CultureInfo.InvariantCulture);
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(10);
 
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("基础潜力全120")&& HeroData != null)
+        if (GUILayout.Button("基础潜力全120")&& ReadedHeroData != null)
         {
-            var mas = HeroData?.maxAttri;
+            var mas = ReadedHeroData?.maxAttri;
             if (mas != null)
             {
                 for (var i = 0; i < mas.Count; i++)
@@ -117,9 +117,9 @@ public class TestElement
             }
         }
         GUILayout.Space(10);
-        if (GUILayout.Button("武学潜力全120")&& HeroData != null)
+        if (GUILayout.Button("武学潜力全120")&& ReadedHeroData != null)
         {
-            var mfs = HeroData?.maxFightSkill;
+            var mfs = ReadedHeroData?.maxFightSkill;
             if (mfs != null)
             {
                 for (var i = 0; i < mfs.Count; i++)
@@ -129,9 +129,9 @@ public class TestElement
             }
         }
         GUILayout.Space(10);
-        if (GUILayout.Button("生活潜力全100")&& HeroData != null)
+        if (GUILayout.Button("生活潜力全100")&& ReadedHeroData != null)
         {
-            var mls = HeroData?.maxLivingSkill;
+            var mls = ReadedHeroData?.maxLivingSkill;
             if (mls != null)
             {
                 for (var i = 0; i < mls.Count; i++)
@@ -144,9 +144,9 @@ public class TestElement
         GUILayout.Space(10);
 
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("基础属性全120")&& HeroData != null)
+        if (GUILayout.Button("基础属性全120")&& ReadedHeroData != null)
         {
-            var bas = HeroData?.baseAttri;
+            var bas = ReadedHeroData?.baseAttri;
             if (bas != null)
             {
                 for (var i = 0; i < bas.Count; i++)
@@ -156,9 +156,9 @@ public class TestElement
             }
         }
         GUILayout.Space(10);
-        if (GUILayout.Button("武学属性全120")&& HeroData != null)
+        if (GUILayout.Button("武学属性全120")&& ReadedHeroData != null)
         {
-            var mfs = HeroData?.baseFightSkill;
+            var mfs = ReadedHeroData?.baseFightSkill;
             if (mfs != null)
             {
                 for (var i = 0; i < mfs.Count; i++)
@@ -168,9 +168,9 @@ public class TestElement
             }
         }
         GUILayout.Space(10);
-        if (GUILayout.Button("生活属性全100")&& HeroData != null)
+        if (GUILayout.Button("生活属性全100")&& ReadedHeroData != null)
         {
-            var bls = HeroData?.baseLivingSkill;
+            var bls = ReadedHeroData?.baseLivingSkill;
             if (bls != null)
             {
                 for (var i = 0; i < bls.Count; i++)
@@ -295,19 +295,19 @@ public class TestElement
 
     public static void LoadHorseData()
     {
-        if (HeroData == null) return;
-        if (HeroData.horse != null)
+        if (ReadedHeroData == null) return;
+        if (ReadedHeroData.horse != null)
         {
-            _horseSpeed = Convert.ToString(HeroData.horse.horseData.speed, CultureInfo.InvariantCulture);
-            _horseSprint = Convert.ToString(HeroData.horse.horseData.sprint, CultureInfo.InvariantCulture);
-            _horsePower = Convert.ToString(HeroData.horse.horseData.power, CultureInfo.InvariantCulture);
-            _horseResist = Convert.ToString(HeroData.horse.horseData.resist, CultureInfo.InvariantCulture);
+            _horseSpeed = Convert.ToString(ReadedHeroData.horse.horseData.speed, CultureInfo.InvariantCulture);
+            _horseSprint = Convert.ToString(ReadedHeroData.horse.horseData.sprint, CultureInfo.InvariantCulture);
+            _horsePower = Convert.ToString(ReadedHeroData.horse.horseData.power, CultureInfo.InvariantCulture);
+            _horseResist = Convert.ToString(ReadedHeroData.horse.horseData.resist, CultureInfo.InvariantCulture);
         }
 
-        if (HeroData.horseArmor == null) return;
-        _horseArmorPower = Convert.ToString(HeroData.horseArmor.horseData.power, CultureInfo.InvariantCulture);
-        _horseArmorSpeed = Convert.ToString(HeroData.horseArmor.horseData.speed, CultureInfo.InvariantCulture);
-        _horseArmorSprint = Convert.ToString(HeroData.horseArmor.horseData.sprint, CultureInfo.InvariantCulture);
-        _horseArmorResist = Convert.ToString(HeroData.horseArmor.horseData.resist, CultureInfo.InvariantCulture);
+        if (ReadedHeroData.horseArmor == null) return;
+        _horseArmorPower = Convert.ToString(ReadedHeroData.horseArmor.horseData.power, CultureInfo.InvariantCulture);
+        _horseArmorSpeed = Convert.ToString(ReadedHeroData.horseArmor.horseData.speed, CultureInfo.InvariantCulture);
+        _horseArmorSprint = Convert.ToString(ReadedHeroData.horseArmor.horseData.sprint, CultureInfo.InvariantCulture);
+        _horseArmorResist = Convert.ToString(ReadedHeroData.horseArmor.horseData.resist, CultureInfo.InvariantCulture);
     }
 }

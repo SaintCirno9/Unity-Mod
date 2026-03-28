@@ -138,7 +138,6 @@ public class ChooseControllerPatches
                     targetHero.UpgradeSkill(skill);
                 }
             }
-            Plugin.Instance.TeachAnyNewSkill.Value = false;
             return false;
         }
 
@@ -159,8 +158,7 @@ public class ChooseControllerPatches
         GameObject _sendResultFucTarget, string _sendResultFuc, string _sendResultParam, ChooseFilterType _filterType,
         HeroData? targetFavorHero, string _cancelFuc)
     {
-        if ((Plugin.Instance.TeachAnyNewSkill.Value && _filterType == ChooseFilterType.ForceTeachNpcNewSkill) 
-            || (_sendResultFuc == "SpeRemoveSkillChoosen" && Plugin.Instance.RemoveAnySkill.Value))
+        if (_sendResultFuc == "SpeRemoveSkillChoosen" && Plugin.Instance.RemoveAnySkill.Value)
         {
             var player = GameDataController.Instance?.gameSaveData?.WorldData?.Player();
             if (player == null || player.kungfuSkills == null) return;
@@ -168,7 +166,11 @@ public class ChooseControllerPatches
             var content = __instance.choosePanel?.transform?.Find("ChoosePanelRoot/ChooseItemList/Viewport/Content");
             if (content == null) return;
 
-            var newObj = content.GetChild(0);
+            var newObj = __instance.newObj;
+            if (newObj == null)
+            {
+                newObj = GameObjectController.Instance?.skillIconPrefab;
+            }
             if (newObj == null) return;
 
             var existingSkillIds = new HashSet<int>();
@@ -198,6 +200,7 @@ public class ChooseControllerPatches
                 {
                     newSkillIcon.skillLvData = skill;
                     newSkillIcon.skillListID = skill.skillID;
+                    newSkillIcon.skillIconType = SkillIconType.Choose;
                 }
             }
         }
@@ -210,7 +213,11 @@ public class ChooseControllerPatches
             var content = __instance.choosePanel?.transform?.Find("ChoosePanelRoot/ChooseItemList/Viewport/Content");
             if (content == null) return;
 
-            var newObj = content.GetChild(0);
+            var newObj = __instance.newObj;
+            if (newObj == null)
+            {
+                newObj = GameObjectController.Instance?.skillIconPrefab;
+            }
             if (newObj == null) return;
 
             var existingSkillIds = new System.Collections.Generic.HashSet<int>();
@@ -255,6 +262,7 @@ public class ChooseControllerPatches
                 {
                     newSkillIcon.skillLvData = skill;
                     newSkillIcon.skillListID = skill.skillID;
+                    newSkillIcon.skillIconType = SkillIconType.Choose;
                 }
             }
         }
@@ -353,24 +361,6 @@ public class CraftPoisonUIControllerPatches
 }
 public class AreaBuildingDataPatches
 {
-    [HarmonyPrefix]
-    [HarmonyPatch(typeof(AreaBuildingDataBase), nameof(AreaBuildingDataBase.GetBuildTime))]
-    public static void AreaBuildingDataBase_GetBuildTime_Prefix(AreaBuildingDataBase? __instance, AreaData targetArea)
-    {
-        if (__instance != null && Plugin.Instance._upgradeDay1.Value)
-        {
-            __instance.buildCostTime = 1;
-        }
-    }
-    [HarmonyPrefix]
-    [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetBuildTime))]
-    public static void AreaBuildingData_GetBuildTime_Prefix(AreaBuildingData? __instance)
-    {
-        if (__instance != null && Plugin.Instance._upgradeDay1.Value)
-        {
-            __instance.buildTimeLeft = 1;
-        }
-    }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaRoadData), nameof(AreaRoadData.GetUpgradeTime))]
     public static void AreaRoadData_GetUpgradeTime_Postfix(AreaRoadData? __instance, ref int __result)
@@ -829,6 +819,8 @@ public class PlotControllerPatches
             {
                 a.UpgradeSkill(b);
             }
+            if (Plugin.Instance._interaction.Value) 
+                a.playerInteractionTimeData.ResetTime();
         }
     }
 }
