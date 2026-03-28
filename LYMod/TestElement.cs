@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Il2Cpp;
 using UnityEngine;
 
@@ -25,6 +25,8 @@ public class TestElement
     public static bool AnyTagFlag = false;
     public static string? BreakChoiceListStr = "";
     public static bool BreakChoiceFlag = false;
+    public static bool MaxAreaFlag = false;
+    public static bool MaxAreaFlag1 = false;
     
     public static void TestTab()
     {
@@ -51,18 +53,18 @@ public class TestElement
             HeroData.talent -= 1;
         }
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
-        
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("天赋点数999") && HeroData != null)
         {
             HeroData.ChangeTagPoint(999, true);
         }
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
-        
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
-        GUILayout.Label("装备马的数据:" );
+        GUILayout.Label("装备马的数据:");
         GUILayout.Label("速度:" );
         _horseSpeed = GUILayout.TextField(_horseSpeed);
         GUILayout.Label("冲刺:" );
@@ -72,10 +74,10 @@ public class TestElement
         GUILayout.Label("坚韧:" );
         _horseResist = GUILayout.TextField(_horseResist);
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
-        
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
-        GUILayout.Label("装备马鞍数据:" );
+        GUILayout.Label("装备马鞍数据:");
         GUILayout.Label("速度:" );
         _horseArmorSpeed = GUILayout.TextField(_horseArmorSpeed);
         GUILayout.Label("冲刺:" );
@@ -85,8 +87,8 @@ public class TestElement
         GUILayout.Label("坚韧:" );
         _horseArmorResist = GUILayout.TextField(_horseArmorResist);
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
-        
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("保存马和马鞍的数据") && HeroData != null && HeroData.horse != null)
         {
@@ -100,7 +102,8 @@ public class TestElement
             HeroData.horse.horseData.resist = float.Parse(_horseResist, CultureInfo.InvariantCulture);
         }
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("基础潜力全120")&& HeroData != null)
         {
@@ -113,7 +116,7 @@ public class TestElement
                 }
             }
         }
-        GUILayout.Space(5);
+        GUILayout.Space(10);
         if (GUILayout.Button("武学潜力全120")&& HeroData != null)
         {
             var mfs = HeroData?.maxFightSkill;
@@ -125,7 +128,7 @@ public class TestElement
                 }
             }
         }
-        GUILayout.Space(5);
+        GUILayout.Space(10);
         if (GUILayout.Button("生活潜力全100")&& HeroData != null)
         {
             var mls = HeroData?.maxLivingSkill;
@@ -138,7 +141,8 @@ public class TestElement
             }
         }
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("基础属性全120")&& HeroData != null)
         {
@@ -151,7 +155,7 @@ public class TestElement
                 }
             }
         }
-        GUILayout.Space(5);
+        GUILayout.Space(10);
         if (GUILayout.Button("武学属性全120")&& HeroData != null)
         {
             var mfs = HeroData?.baseFightSkill;
@@ -163,7 +167,7 @@ public class TestElement
                 }
             }
         }
-        GUILayout.Space(5);
+        GUILayout.Space(10);
         if (GUILayout.Button("生活属性全100")&& HeroData != null)
         {
             var bls = HeroData?.baseLivingSkill;
@@ -176,7 +180,8 @@ public class TestElement
             }
         }
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
         _maxSkillNumInput ??= Convert.ToString(Plugin.Instance.MaxBreakValue.Value, CultureInfo.InvariantCulture);
         _maxSkillNumInput = GUILayout.TextField(_maxSkillNumInput);
@@ -187,7 +192,7 @@ public class TestElement
             Plugin.Instance.MaxBreak.Value = maxBreak;
             Plugin.Instance._mainCategory?.SaveToFile();
         }
-        GUILayout.Space(5);
+        GUILayout.Space(10);
         _npcMaxSkillNumInput ??= Convert.ToString(Plugin.Instance.NpcMaxBreakValue.Value, CultureInfo.InvariantCulture);
         _npcMaxSkillNumInput = GUILayout.TextField(_npcMaxSkillNumInput);
         var npcMaxBreak = GUILayout.Toggle(Plugin.Instance.NpcMaxBreak.Value, "NPC最大属性上限锁定");
@@ -199,13 +204,14 @@ public class TestElement
         }
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
-        GUILayout.Space(5);
-        
+        GUILayout.Space(10);
+
         GUILayout.BeginVertical("Box");
         GUILayout.BeginHorizontal();
         GUILayout.Label("突破属性修改方案一：");
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("获取当前武学突破随机值"))
         {
@@ -221,11 +227,13 @@ public class TestElement
         var breakChoiceFlag = GUILayout.Toggle(BreakChoiceFlag, "指定随机值");
         BreakChoiceFlag = breakChoiceFlag;
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
         GUILayout.Label("突破属性修改方案二：");
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
+        GUILayout.Space(10);
+
         GUILayout.BeginHorizontal();
         GUILayout.Label("指定后突破选什么都是指定的属性,属性类别参考属性ID栏");
         GUILayout.EndHorizontal();
@@ -236,8 +244,8 @@ public class TestElement
         BreakValue = GUILayout.TextField(BreakValue);
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
-        GUILayout.Space(5);
-        
+        GUILayout.Space(10);
+
         GUILayout.BeginVertical("Box");
         GUILayout.BeginHorizontal();
         RedMaterial = GUILayout.Toggle(RedMaterial, "必获得红材料,下面是填写材料属性，参考属性id栏");
@@ -246,8 +254,8 @@ public class TestElement
         MaterialAttr = GUILayout.TextField(MaterialAttr);
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
-        GUILayout.Space(5);
-        
+        GUILayout.Space(10);
+
         GUILayout.BeginVertical("Box");
         GUILayout.BeginHorizontal();
         var maxNum = GUILayout.TextField("99");
@@ -256,10 +264,21 @@ public class TestElement
             GlobalData.MaxLoverNum = int.Parse(maxNum);
             GlobalData.MaxFriendNum = int.Parse(maxNum);
             GlobalData.MaxBrotherNum = int.Parse(maxNum);
-            GlobalData.PlayTestMaxFavor =  999;
         }
-        if (GUILayout.Button("创建人物时属性点数999"))
+        GUILayout.EndHorizontal();
+        GUILayout.Space(10);
+
+        GUILayout.BeginHorizontal();
+        AnyTagFlag = GUILayout.Toggle(AnyTagFlag, "获取天赋没有前提要求，可以直接获取红色天赋");
+        GUILayout.EndHorizontal();
+        GUILayout.EndVertical();
+        GUILayout.Space(10);
+        // 人物建档时
+        GUILayout.BeginVertical("Box");
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("新档人物属性点数999"))
         {
+            
             var smc = StartMenuController._instance;
             if (smc != null)
             {
@@ -268,13 +287,9 @@ public class TestElement
                 smc.leftLivingSkillPoint = 999;
             }
         }
+        MaxAreaFlag = GUILayout.Toggle(MaxAreaFlag, "仙霞初建存档地块最大化");
+        MaxAreaFlag1 = GUILayout.Toggle(MaxAreaFlag1, "需要城墙？");
         GUILayout.EndHorizontal();
-        GUILayout.Space(5);
-        
-        GUILayout.BeginHorizontal();
-        AnyTagFlag = GUILayout.Toggle(AnyTagFlag, "获取天赋没有前提要求，可以直接获取红色天赋");
-        GUILayout.EndHorizontal();
-        
         GUILayout.EndVertical();
     }
 
