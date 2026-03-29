@@ -42,7 +42,8 @@ public class TestElement
                 LoadHorseData();
             }
         }
-        GUILayout.Label("人物：" + ReadedHeroData?.heroName + ": " + ReadedHeroData?.heroID);
+        GUILayout.Label("人物：" + ReadedHeroData?.heroName + "-" +
+                        ReadedHeroData?.heroID + "-"+ReadedHeroData?.age);
         GUILayout.Label("成长值：" + ReadedHeroData?.talent);
         if (GUILayout.Button("+") && ReadedHeroData != null)
         {
@@ -291,6 +292,9 @@ public class TestElement
         MaxAreaFlag1 = GUILayout.Toggle(MaxAreaFlag1, "需要城墙？");
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
+        
+        
+        
     }
 
     public static void LoadHorseData()

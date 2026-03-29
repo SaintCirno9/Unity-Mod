@@ -1,11 +1,82 @@
 ﻿using HarmonyLib;
 using Il2Cpp;
+using Object = UnityEngine.Object;
 
 namespace LYMod;
 
 [HarmonyPatch]
 public class TestPatches
 {
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DrinkUIController), nameof(DrinkUIController.NextButtonClicked))]
+    public static void DrinkUIController_NextButtonClicked_Prefix(DrinkUIController __instance)
+    {
+        if (__instance == null || !Plugin.Instance.DrinkOneWinFlag.Value) return;
+        __instance.enemyLose = true;
+        __instance.playerLose = false;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(PlotController), nameof(PlotController.AskHeroMakeFriend))]
+    public static void PlotController_AskHeroMakeFriend_Postfix(PlotController __instance)
+    {
+        if (!Plugin.Instance.EffeminateManFlag.Value) return;
+        
+        var shero = __instance.sourceInteractHero;
+        if (shero == null)
+            shero = GameController.Instance.worldData.Player();
+        var targetHero = __instance.targetInteractHero;
+        if (shero == null || targetHero == null) return;
+        
+        if (!shero.isFemale) return;
+        
+        var prefab = __instance.plotInteractPrefab;
+        var plotPanel = __instance.plotPanel;
+        if (prefab == null || plotPanel == null) return;
+        
+        var interactGrid = plotPanel.transform.Find("InteractGrid");
+        if (interactGrid == null) return;
+        
+        for (int i = 0; i < interactGrid.childCount; i++)
+        {
+            var child = interactGrid.GetChild(i);
+            var existingController = child.GetComponent<PlotInteractController>();
+            if (existingController?.choiceData?.callFuc == "AskHeroToLover")
+            {
+                return;
+            }
+        }
+        
+        var newObj = Object.Instantiate(prefab, interactGrid);
+        var controller = newObj.GetComponent<PlotInteractController>();
+        if (controller == null) return;
+        
+        var choiceData = new SinglePlotChoiceData();
+        choiceData.choiceText = "结缘";
+        choiceData.callFuc = "AskHeroToLover";
+        var requirements = new Il2CppSystem.Collections.Generic.List<PlotChoiceRequirement>();
+        requirements.Add(new PlotChoiceRequirement(ChoiceRequirementType.FavorDegree,100));
+        choiceData.requirements = requirements;
+        choiceData.relations = new Il2CppSystem.Collections.Generic.List<RelationRequirementType>();
+        choiceData.costResource = new Il2CppSystem.Collections.Generic.List<ResourceData>();
+        controller.choiceData = choiceData;
+        controller.meetRequire = true;
+        controller.meetCost = true;
+        
+        var labelChild = newObj.transform.Find("Label");
+        var requireChild = newObj.transform.Find("Require");
+        
+        var unityText = labelChild.GetComponent<UnityEngine.UI.Text>();
+        var requireText = requireChild.GetComponent<UnityEngine.UI.Text>();
+        
+        unityText.text = "结缘";
+        requireText.text = "需要好感100";
+        requireChild.gameObject.SetActive(false);
+        requireChild.gameObject.SetActive(true);
+        labelChild.gameObject.SetActive(false);
+        labelChild.gameObject.SetActive(true);
+    }
+
     private static readonly int[] MaximizedLayout =
     {
         -1, -1, -1, -1, -1, -1, -1, -2, -1, -1, -1, -1, -1, -1, -1,
@@ -118,4 +189,5 @@ public class TestPatches
             TestElement.MaxAreaFlag1 = false;
         }
     }
+    
 }

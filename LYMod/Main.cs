@@ -16,7 +16,7 @@ namespace LYMod;
 public static class ModConstants
 {
     public const string ModName = "LYMod";     // 插件名
-    public const string ModVersion = "3.0.6";    // 版本号
+    public const string ModVersion = "3.1";    // 版本号
     public const string ModAuthor = "Can";     // 作者
 }
 
@@ -73,12 +73,16 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<string> ForceSpeFunctions; // 门派特性
     public MelonPreferences_Entry<float> PoisonRate; // 淬毒倍率
     public MelonPreferences_Entry<float> PoisonReduceRate; // 淬毒消耗倍率
+    public MelonPreferences_Entry<bool> CanControlableFlag; // 操作别人的装备和武学
+    public MelonPreferences_Entry<bool> TimeFreezeFlag; // 时间停止
+    public MelonPreferences_Entry<bool> EffeminateManFlag; // 女性恋爱自由
+    public MelonPreferences_Entry<bool> DrinkOneWinFlag; // 斗酒一轮必胜
     
     private static bool _isHaveAucRoll = false; 
     
     // GUI状态
     private Vector2 mainScrollPos;
-    private const float Hight = 930;
+    private const float Hight = 970;
     public Rect MainWindowRect = new(50, 100, 590, Hight);
     private const int Width = 560;
     public bool ShowMainWindow = false;
@@ -138,6 +142,10 @@ public class Plugin : MelonMod
         _breakRollFlag = _mainCategory.CreateEntry("BreakRollFlag", false,  description: "Roll开关");
         TeachAnyNewSkill = _mainCategory.CreateEntry("TeachAnyNewSkill", false,  description: "传授任意等级技能");
         RemoveAnySkill = _mainCategory.CreateEntry("RemoveAnySkill", false,  description: "遗忘任意等级技能");
+        CanControlableFlag = _mainCategory.CreateEntry("CanControlableFlag", false,  description: "是否可以操控别人的装备和武学");
+        TimeFreezeFlag = _mainCategory.CreateEntry("TimeFreezeFlag", false,  description: "时间停止");
+        EffeminateManFlag = _mainCategory.CreateEntry("EffeminateManFlag", false,  description: "女性恋爱自由");
+        DrinkOneWinFlag = _mainCategory.CreateEntry("DrinkOneWinFlag", false,  description: "斗酒一轮必胜");
         
         
         var harmony = new HarmonyLib.Harmony("LYMod");
@@ -161,6 +169,8 @@ public class Plugin : MelonMod
         harmony.PatchAll(typeof(ChooseControllerPatches));
         harmony.PatchAll(typeof(MeditationDataPatches));
         harmony.PatchAll(typeof(PoisonPatches));
+        harmony.PatchAll(typeof(TimeDataPatches));
+        harmony.PatchAll(typeof(TestPatches));
         MelonLogger.Msg("LYMod is loaded!左alt + e 打开窗体!");
         
         var allMods = MelonBase.RegisteredMelons.OfType<MelonMod>();
@@ -206,7 +216,7 @@ public class Plugin : MelonMod
         
        
     }
-
+ 
     
     public override void OnGUI()
     {
@@ -215,7 +225,10 @@ public class Plugin : MelonMod
         GUI.skin.toggle.fontSize = 18;
         GUI.skin.textField.fontSize = 18;
         if (ShowMainWindow)
-            MainWindowRect = GUI.Window(0, MainWindowRect, (GUI.WindowFunction)DrawMainWindow, "LYMod " + ModConstants.ModVersion);
+        {
+            MainWindowRect = GUI.ModalWindow(0, MainWindowRect, (GUI.WindowFunction)DrawMainWindow, "LYMod " + ModConstants.ModVersion);
+            
+        }
     }
 
     private void DrawMainWindow(int windowId)
@@ -408,7 +421,30 @@ public class Plugin : MelonMod
             _mainCategory?.SaveToFile();
         }
         GUILayout.EndHorizontal();
+        GUILayout.Space(10);
         
+        GUILayout.BeginHorizontal();
+        var canControlable = GUILayout.Toggle(CanControlableFlag.Value, "修改他人装备和武学");
+        if (canControlable != CanControlableFlag.Value)
+        {
+            CanControlableFlag.Value = canControlable;
+            _mainCategory?.SaveToFile();
+        }
+        var effeminateMan = GUILayout.Toggle(EffeminateManFlag.Value, "女性恋爱自由");
+        if (effeminateMan != EffeminateManFlag.Value)
+        {
+            EffeminateManFlag.Value = effeminateMan;
+            _mainCategory?.SaveToFile();
+        }
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        var timeFreeze = GUILayout.Toggle(TimeFreezeFlag.Value, "时间暂停");
+        if (timeFreeze != TimeFreezeFlag.Value)
+        {
+            TimeFreezeFlag.Value = timeFreeze;
+            _mainCategory?.SaveToFile();
+        } 
+        GUILayout.EndHorizontal();
         GUILayout.EndVertical();
         GUILayout.Space(10);
 

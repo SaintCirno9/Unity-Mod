@@ -7,6 +7,16 @@ namespace LYMod;
 using HarmonyLib;
 using Il2Cpp;
 
+public class TimeDataPatches
+{
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(GameController), nameof(GameController.ChangeDay), new Type[0])]
+    public static bool ChangeDay_Prefix()
+    {
+        return !Plugin.Instance.TimeFreezeFlag.Value;
+    }
+}
+
 public class PoisonPatches
 {
     [HarmonyPostfix]
@@ -267,32 +277,51 @@ public class ChooseControllerPatches
             }
         }
     }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(BuildingUIController), nameof(BuildingUIController.GetSpeRemoveSkillCost))]
+    public static void GetSpeRemoveSkillCost_Postfix(BuildingUIController __instance, ref int __result)
+    {
+        if (__instance != null && Plugin.Instance.RemoveAnySkill.Value)
+        {
+            __result = 1;
+        }
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroTagDataBase), nameof(HeroTagDataBase.GetCostTime))]
+    public static void GetCostTime_Postfix(HeroTagDataBase __instance, ref int __result)
+    {
+        if (__instance != null && Plugin.Instance.RemoveAnySkill.Value)
+        {
+            __result = 1;
+        }
+    }
 }
 public class IdentifyMatchControllerPatches
 {
- [HarmonyPrefix]
- [HarmonyPatch(typeof(IdentifyMatchController), nameof(IdentifyMatchController.SureButtonClicked))]
- public static bool IdentifyMatchController_SureButtonClicked_Prefix(IdentifyMatchController __instance)
- {
-     if (__instance != null && __instance.identifyMatchUIPanel != null && Plugin.Instance.AutoJianBaoFlag.Value)
+     [HarmonyPrefix]
+     [HarmonyPatch(typeof(IdentifyMatchController), nameof(IdentifyMatchController.SureButtonClicked))]
+     public static bool IdentifyMatchController_SureButtonClicked_Prefix(IdentifyMatchController __instance)
      {
-         List<float> list = new List<float>();
-         var il2CppArrayBase = __instance.identifyMatchUIPanel.GetComponentsInChildren<ItemIconController>();
-         if (il2CppArrayBase is { Length: > 0 })
+         if (__instance != null && __instance.identifyMatchUIPanel != null && Plugin.Instance.AutoJianBaoFlag.Value)
          {
-             foreach (ItemIconController itemIconController in il2CppArrayBase)
+             List<float> list = new List<float>();
+             var il2CppArrayBase = __instance.identifyMatchUIPanel.GetComponentsInChildren<ItemIconController>();
+             if (il2CppArrayBase is { Length: > 0 })
              {
-                 if (itemIconController != null && itemIconController.itemData != null)
+                 foreach (ItemIconController itemIconController in il2CppArrayBase)
                  {
-                     list.Add(itemIconController.itemData.GetTreasureRealValue());
+                     if (itemIconController != null && itemIconController.itemData != null)
+                     {
+                         list.Add(itemIconController.itemData.GetTreasureRealValue());
+                     }
                  }
+                 int index = list.IndexOf(list.Max());
+                 __instance.SetNowChooseTreasure(il2CppArrayBase[index].gameObject);
              }
-             int index = list.IndexOf(list.Max());
-             __instance.SetNowChooseTreasure(il2CppArrayBase[index].gameObject);
          }
+         return true;
      }
-     return true;
- }
 }
 
 
@@ -524,6 +553,15 @@ public class GameControllerPatches
 
 public class HeroDataPatch
 {
+
+    // 操作别人的装备和武学
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(HeroDetailController), "ShowHeroDetail")]
+    public static void HeroDetailController_ShowHeroDetail_Prefix(ref bool _itemSpeControlable)
+    {
+        if (Plugin.Instance.CanControlableFlag.Value)
+            _itemSpeControlable = true;
+    }
     // 所有门派特性生效
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.HaveForceFunction))]
