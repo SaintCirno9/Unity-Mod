@@ -11,5 +11,4 @@
 3.LYMod
   - 龙胤立志传mod
   - LYMOD 是melonloader版本的
-  - LYMod1是bepinex版本的
   - LYModB是正在学习用bepinex在il2cpp下怎么用ugui
