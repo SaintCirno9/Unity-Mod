@@ -201,9 +201,11 @@ public class Plugin : MelonMod
             TryBreakThoughtRoll();
             TryCraftRoll();
             TryAuctionRoll();
-            TryZhangyuanRoll();
+            TryZhongyuanRoll();
+            TryRefreshRecruitList();
         }
-        
+
+       
         
         // if (Input.GetKeyDown(KeyCode.BackQuote))
         // {
@@ -795,24 +797,9 @@ public class Plugin : MelonMod
         cuc.ShowCraftResultChoosePanel();
     }
 
-    // private static void TryTianGongRoll()
-    // {
-    //     SpeEnhanceEquipController seec = SpeEnhanceEquipController.Instance;
-    //     if (seec != null && seec.speEnhanceEquipUI != null && seec.speEnhanceEquipUI.activeInHierarchy)
-    //     {
-    //         Il2CppArrayBase<SpeEnhanceEquipChoiceController> componentsInChildren = seec.enhanceChoiceGrid
-    //             .GetComponentsInChildren<SpeEnhanceEquipChoiceController>();
-    //         if (seec.enhanceChoiceGrid != null && seec.enhanceChoiceGrid.transform.childCount > 0 && 
-    //             componentsInChildren is { Length: > 0 })
-    //         {
-    //             seec.ClearAllChoice();
-    //             seec.GenerateChoice();
-    //             seec.RefreshEnhanceButtonState();
-    //         } 
-    //     }
-    // }
+    
     // 中元鬼市roll
-    private static void TryZhangyuanRoll()
+    private static void TryZhongyuanRoll()
     {
         var tuic = TradeUIController.Instance;
         if (tuic == null || !tuic.tradeUI.activeInHierarchy) return;
@@ -842,6 +829,64 @@ public class Plugin : MelonMod
         tradeUI.rightList.RefreshItemList(rightItemListData, ItemListInteractType.TradeRight, false);
         
     }
+
+    // roll招募，只有女性角色
+    private static void TryRefreshRecruitList()
+    {
+        var ruic = RecruitUIController.Instance;
+        if (ruic == null || ruic.recruitUIPanel == null || !ruic.recruitUIPanel.activeInHierarchy) return;
+
+        GameController gc = GameController.Instance;
+        GameDataController gdc = GameDataController.Instance;
+        var baseHero = new HeroData
+        {
+            age = 20,
+            isFemale = true,
+            talent = 4,
+            heroTagPoint = 100
+        };
+        if (gc != null && gdc != null)
+        {
+            var tempHeros = gc.worldData.TempHeros;
+            tempHeros.Clear();
+            var forceLv = gc.worldData.Player()?.GetForce()?.forceLv ?? 0;
+            var heroNum = 4;
+            for (int i = 0; i < heroNum; i++)
+            {
+                // 生成女性名称
+                var randomName = gdc.GenerateRandomHeroName(true, gdc.GenerateRandomHeroFamilyName(), true);
+                // 生成女性hero
+                var newHero = gc.GenerateHeroData(randomName, -1, -1, forceLv - 1, baseHero, true, 
+                    SexLimit.Female, false, false);
+                gc.worldData.AddTempHero(newHero);
+            }
+            ruic.HideRecruitUI();
+            ruic.ShowRecruitUI(RecruitUIType.Normal, heroNum, forceLv);
+        } 
+        
+    }
+
+    // 刷新特殊事件 没啥意思
+    // private static void TryRerollSpeMasterOrStele()
+    // {
+    //     var pc = PlotController.Instance;
+    //     if (pc == null || pc.nowEvent == null) return;
+    //
+    //     var plotPanel = pc.plotPanel;
+    //     if (plotPanel == null || !plotPanel.activeInHierarchy) return;
+    //
+    //     var eventName = pc.nowEvent.eventName;
+    //     if (string.IsNullOrEmpty(eventName)) return;
+    //
+    //     if (eventName.Contains("世外高人"))
+    //     {
+    //         pc.FindSpeMasterEvent("");
+    //     }
+    //     else if (eventName.Contains("失传秘籍") || eventName.Contains("石碑"))
+    //     {
+    //         pc.FindSpeSteleFight();
+    //     }
+    // }
   
 }
 

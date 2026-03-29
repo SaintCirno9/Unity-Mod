@@ -1087,7 +1087,7 @@ public class ItemListDataPatches
         if (__instance?.GetHero() != null && __instance.GetHero().heroID == 0)
         {
             if (Plugin.Instance._weightRatio.Value < 1)
-                targetItem.weight *= Plugin.Instance._weightRatio.Value;
+                __instance.weight *= Plugin.Instance._weightRatio.Value;
 
             if (targetItem.type == ItemType.Book && Plugin.Instance._redBook.Value)
             {
