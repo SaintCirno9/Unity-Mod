@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using Il2Cpp;
 using UnityEngine;
@@ -290,6 +291,25 @@ public class TestElement
         }
         MaxAreaFlag = GUILayout.Toggle(MaxAreaFlag, "仙霞初建存档地块最大化");
         MaxAreaFlag1 = GUILayout.Toggle(MaxAreaFlag1, "需要城墙？");
+        GUILayout.EndHorizontal();
+        GUILayout.EndVertical();
+        
+        GUILayout.BeginVertical("Box");
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("窗体/字体缩放: " + Plugin.Instance.WindowScaling.Value.ToString("F2") + "x");
+        if (GUILayout.Button("重置"))
+        {
+            Plugin.Instance.WindowScaling.Value = 1;
+            Plugin.Instance._mainCategory?.SaveToFile();
+        }
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        var newScale = GUILayout.HorizontalSlider(Plugin.Instance.WindowScaling.Value, 0.5f, 2.0f);
+        if (Math.Abs(newScale - Plugin.Instance.WindowScaling.Value) > 0.001f)
+        {
+            Plugin.Instance.WindowScaling.Value = newScale;
+            Plugin.Instance._mainCategory?.SaveToFile();
+        }
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
         

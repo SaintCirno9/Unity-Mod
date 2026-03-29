@@ -1,11 +1,9 @@
 ﻿using System.Globalization;
 using Il2Cpp;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using LYMod;
 using MelonLoader;
 using UnityEngine;
 using Object = UnityEngine.Object;
-using Random = System.Random;
 
 
 [assembly: MelonInfo(typeof(Plugin), ModConstants.ModName, ModConstants.ModVersion, ModConstants.ModAuthor)]
@@ -73,16 +71,17 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<string> ForceSpeFunctions; // 门派特性
     public MelonPreferences_Entry<float> PoisonRate; // 淬毒倍率
     public MelonPreferences_Entry<float> PoisonReduceRate; // 淬毒消耗倍率
-    public MelonPreferences_Entry<bool> CanControlableFlag; // 操作别人的装备和武学
+    // public MelonPreferences_Entry<bool> CanControlableFlag; // 操作别人的装备和武学
     public MelonPreferences_Entry<bool> TimeFreezeFlag; // 时间停止
     public MelonPreferences_Entry<bool> EffeminateManFlag; // 女性恋爱自由
     public MelonPreferences_Entry<bool> DrinkOneWinFlag; // 斗酒一轮必胜
+    public MelonPreferences_Entry<float> WindowScaling; // 窗体缩放百分比
     
     private static bool _isHaveAucRoll = false; 
     
     // GUI状态
     private Vector2 mainScrollPos;
-    private const float Hight = 970;
+    private const float Hight = 990;
     public Rect MainWindowRect = new(50, 100, 590, Hight);
     private const int Width = 560;
     public bool ShowMainWindow = false;
@@ -142,10 +141,11 @@ public class Plugin : MelonMod
         _breakRollFlag = _mainCategory.CreateEntry("BreakRollFlag", false,  description: "Roll开关");
         TeachAnyNewSkill = _mainCategory.CreateEntry("TeachAnyNewSkill", false,  description: "传授任意等级技能");
         RemoveAnySkill = _mainCategory.CreateEntry("RemoveAnySkill", false,  description: "遗忘任意等级技能");
-        CanControlableFlag = _mainCategory.CreateEntry("CanControlableFlag", false,  description: "是否可以操控别人的装备和武学");
+        // CanControlableFlag = _mainCategory.CreateEntry("CanControlableFlag", false,  description: "是否可以操控别人的装备和武学");
         TimeFreezeFlag = _mainCategory.CreateEntry("TimeFreezeFlag", false,  description: "时间停止");
         EffeminateManFlag = _mainCategory.CreateEntry("EffeminateManFlag", false,  description: "女性恋爱自由");
         DrinkOneWinFlag = _mainCategory.CreateEntry("DrinkOneWinFlag", false,  description: "斗酒一轮必胜");
+        WindowScaling = _mainCategory.CreateEntry<float>("WindowScaling", 1,  description: "窗体缩放百分比");
         
         
         var harmony = new HarmonyLib.Harmony("LYMod");
@@ -202,52 +202,57 @@ public class Plugin : MelonMod
             TryCraftRoll();
             TryAuctionRoll();
             TryZhangyuanRoll();
-            
         }
         
         
-        if (Input.GetKeyDown(KeyCode.BackQuote))
-        {
-
-            MelonLogger.Msg(string.Join(",", OtherElement.enabledForceIDs.Select(n => n.ToString())));
-            MelonLogger.Msg(Instance.ForceSpeFunctions.Value);
-
-        }
-        
-       
+        // if (Input.GetKeyDown(KeyCode.BackQuote))
+        // {
+        //     MelonLogger.Msg(string.Join(",", OtherElement.enabledForceIDs.Select(n => n.ToString())));
+        //     MelonLogger.Msg(Instance.ForceSpeFunctions.Value);
+        // }
     }
  
     
     public override void OnGUI()
     {
-        GUI.skin.label.fontSize = 18;
-        GUI.skin.button.fontSize = 18;
-        GUI.skin.toggle.fontSize = 18;
-        GUI.skin.textField.fontSize = 18;
+        var scale = WindowScaling.Value;
+        var baseFontSize = 18;
+        var scaledFontSize = (int)(baseFontSize * scale);
+        
+        GUI.skin.label.fontSize = scaledFontSize;
+        GUI.skin.button.fontSize = scaledFontSize;
+        GUI.skin.toggle.fontSize = scaledFontSize;
+        GUI.skin.textField.fontSize = scaledFontSize;
+        
         if (ShowMainWindow)
         {
+            var scaledWidth = 590 * scale;
+            var scaledHeight = 960 * scale;
+            MainWindowRect = new Rect(MainWindowRect.x, MainWindowRect.y, scaledWidth, scaledHeight);
             MainWindowRect = GUI.ModalWindow(0, MainWindowRect, (GUI.WindowFunction)DrawMainWindow, "LYMod " + ModConstants.ModVersion);
-            
         }
     }
 
     private void DrawMainWindow(int windowId)
     {
+        var scale = WindowScaling.Value;
+        var scaledWidth = 560 * scale;
+        var scaledHeight = (960 * scale) - (70 * scale);
        
-        GUILayout.Space(5);
+        GUILayout.Space(5 * scale);
         // 标签页选择
         GUILayout.BeginHorizontal();
         for (var i = 0; i < tabNames.Length; i++)
         {
             if (GUILayout.Toggle(selectedTab == i, tabNames[i], "Button")) selectedTab = i;
-            GUILayout.Space(10);
+            GUILayout.Space(10 * scale);
         }
 
         GUILayout.EndHorizontal();
        
 
         // 滚动区域
-        mainScrollPos = GUILayout.BeginScrollView(mainScrollPos, GUILayout.Width(Width), GUILayout.Height(Hight - 80));
+        mainScrollPos = GUILayout.BeginScrollView(mainScrollPos, GUILayout.Width(scaledWidth), GUILayout.Height(scaledHeight));
 
         
         
@@ -424,19 +429,28 @@ public class Plugin : MelonMod
         GUILayout.Space(10);
         
         GUILayout.BeginHorizontal();
-        var canControlable = GUILayout.Toggle(CanControlableFlag.Value, "修改他人装备和武学");
-        if (canControlable != CanControlableFlag.Value)
-        {
-            CanControlableFlag.Value = canControlable;
-            _mainCategory?.SaveToFile();
-        }
+        // var canControlable = GUILayout.Toggle(CanControlableFlag.Value, "修改他人装备和武学");
+        // if (canControlable != CanControlableFlag.Value)
+        // {
+        //     CanControlableFlag.Value = canControlable;
+        //     _mainCategory?.SaveToFile();
+        // }
         var effeminateMan = GUILayout.Toggle(EffeminateManFlag.Value, "女性恋爱自由");
         if (effeminateMan != EffeminateManFlag.Value)
         {
             EffeminateManFlag.Value = effeminateMan;
             _mainCategory?.SaveToFile();
         }
+        var dringkFlag = GUILayout.Toggle(DrinkOneWinFlag.Value, "斗酒一回胜利");
+        if (dringkFlag != DrinkOneWinFlag.Value)
+        {
+            DrinkOneWinFlag.Value = dringkFlag;
+            _mainCategory?.SaveToFile();
+        }  
+        
         GUILayout.EndHorizontal();
+        GUILayout.Space(10);
+        
         GUILayout.BeginHorizontal();
         var timeFreeze = GUILayout.Toggle(TimeFreezeFlag.Value, "时间暂停");
         if (timeFreeze != TimeFreezeFlag.Value)

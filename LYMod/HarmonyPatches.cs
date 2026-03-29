@@ -554,14 +554,14 @@ public class GameControllerPatches
 public class HeroDataPatch
 {
 
-    // 操作别人的装备和武学
-    [HarmonyPrefix]
-    [HarmonyPatch(typeof(HeroDetailController), "ShowHeroDetail")]
-    public static void HeroDetailController_ShowHeroDetail_Prefix(ref bool _itemSpeControlable)
-    {
-        if (Plugin.Instance.CanControlableFlag.Value)
-            _itemSpeControlable = true;
-    }
+    // // 操作别人的装备和武学
+    // [HarmonyPrefix]
+    // [HarmonyPatch(typeof(HeroDetailController), "ShowHeroDetail")]
+    // public static void HeroDetailController_ShowHeroDetail_Prefix(ref bool _itemSpeControlable)
+    // {
+    //     if (Plugin.Instance.CanControlableFlag.Value)
+    //         _itemSpeControlable = true;
+    // }
     // 所有门派特性生效
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.HaveForceFunction))]
