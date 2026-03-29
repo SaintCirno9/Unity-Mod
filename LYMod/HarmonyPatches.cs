@@ -488,7 +488,7 @@ public class BookWriterUIControllerPatches
             foreach (var bwd in list)
             {
                 if (bwd != null && bwd.workPercent < 0.99)
-                    bwd.workPercent = 0.99f;
+                    bwd.workPercent = 0.99999f;
             }
         }
     }
@@ -1087,7 +1087,7 @@ public class ItemListDataPatches
         if (__instance?.GetHero() != null && __instance.GetHero().heroID == 0)
         {
             if (Plugin.Instance._weightRatio.Value < 1)
-                __instance.weight *= Plugin.Instance._weightRatio.Value;
+                targetItem.weight *= Plugin.Instance._weightRatio.Value;
 
             if (targetItem.type == ItemType.Book && Plugin.Instance._redBook.Value)
             {

@@ -14,7 +14,7 @@ namespace LYMod;
 public static class ModConstants
 {
     public const string ModName = "LYMod";     // 插件名
-    public const string ModVersion = "3.1";    // 版本号
+    public const string ModVersion = "3.1.1";    // 版本号
     public const string ModAuthor = "Can";     // 作者
 }
 
@@ -81,9 +81,9 @@ public class Plugin : MelonMod
     
     // GUI状态
     private Vector2 mainScrollPos;
-    private const float Hight = 990;
-    public Rect MainWindowRect = new(50, 100, 590, Hight);
-    private const int Width = 560;
+    private const float Hight = 1000;
+    private const int Width = 590;
+    public Rect MainWindowRect = new(50, 100, Width, Hight);
     public bool ShowMainWindow = false;
     private readonly string[] tabNames = { "功能开关", "测试", "属性ID", "门派特性" };
     private int selectedTab;
@@ -227,7 +227,7 @@ public class Plugin : MelonMod
         if (ShowMainWindow)
         {
             var scaledWidth = 590 * scale;
-            var scaledHeight = 960 * scale;
+            var scaledHeight = Hight * scale;
             MainWindowRect = new Rect(MainWindowRect.x, MainWindowRect.y, scaledWidth, scaledHeight);
             MainWindowRect = GUI.ModalWindow(0, MainWindowRect, (GUI.WindowFunction)DrawMainWindow, "LYMod " + ModConstants.ModVersion);
         }
@@ -237,7 +237,7 @@ public class Plugin : MelonMod
     {
         var scale = WindowScaling.Value;
         var scaledWidth = 560 * scale;
-        var scaledHeight = (960 * scale) - (70 * scale);
+        var scaledHeight = (Hight * scale) - (70 * scale);
        
         GUILayout.Space(5 * scale);
         // 标签页选择
