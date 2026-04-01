@@ -1,0 +1,113 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <OutputPath>C:\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\Mods</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <!-- 关键：移除配置文件夹（Debug/Release） -->
+        <AppendConfigurationToOutputPath>false</AppendConfigurationToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <PlatformTarget>x64</PlatformTarget>
+        <!-- 👇 核心：禁用 PDB 调试符号文件 -->
+        <DebugType>None</DebugType>          <!-- 禁用调试类型，不生成 PDB -->
+        <DebugSymbols>false</DebugSymbols>   <!-- 显式关闭调试符号生成 -->
+        
+        <!-- 👇 禁用生成 .json 编译配置文件 -->
+         <GenerateDependencyFile>false</GenerateDependencyFile>
+        <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+    </PropertyGroup>
+    
+    <ItemGroup>
+      <Compile Remove="Il2Cpp\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="0Harmony">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\0Harmony.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Assembly-CSharp">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\Assembly-CSharp.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Il2CppInterop.Common">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\Il2CppInterop.Common.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Il2CppInterop.HarmonySupport">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\Il2CppInterop.HarmonySupport.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Il2CppInterop.Runtime">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\Il2CppInterop.Runtime.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Il2Cppmscorlib">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\Il2Cppmscorlib.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Il2CppSystem">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\Il2CppSystem.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Il2CppSystem.Core">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\Il2CppSystem.Core.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="MelonLoader">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\MelonLoader.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="MelonLoader.NativeHost">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\MelonLoader.NativeHost.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Newtonsoft.Json">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\net6\Newtonsoft.Json.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="Unity.TextMeshPro">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\Unity.TextMeshPro.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="UnityEngine">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\UnityEngine.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="UnityEngine.AssetBundleModule">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\UnityEngine.AssetBundleModule.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="UnityEngine.CoreModule">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\UnityEngine.CoreModule.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="UnityEngine.IMGUIModule">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\UnityEngine.IMGUIModule.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="UnityEngine.InputLegacyModule">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\UnityEngine.InputLegacyModule.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="UnityEngine.TextCoreModule">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\UnityEngine.TextCoreModule.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="UnityEngine.TextRenderingModule">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\UnityEngine.TextRenderingModule.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Include="UnityEngine.UI">
+        <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\LongYinLiZhiZhuan\MelonLoader\Il2CppAssemblies\UnityEngine.UI.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+    </ItemGroup>
+
+</Project>
