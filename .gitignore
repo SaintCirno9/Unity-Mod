@@ -71,3 +71,6 @@ logs/
 # Docker 临时文件（若用Docker）
 .dockerignore
 docker-compose.override.yml
+
+.trae/
+/Il2Cpp
