@@ -14,7 +14,7 @@ namespace LYMod;
 public static class ModConstants
 {
     public const string ModName = "LYMod";     // 插件名
-    public const string ModVersion = "3.2.2";    // 版本号
+    public const string ModVersion = "3.3";    // 版本号
     public const string ModAuthor = "Can";     // 作者
 }
 
@@ -74,11 +74,15 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<bool> TimeFreezeFlag; // 时间停止
     public MelonPreferences_Entry<bool> EffeminateManFlag; // 女性恋爱自由
     public MelonPreferences_Entry<bool> DrinkOneWinFlag; // 斗酒一轮必胜
-    public MelonPreferences_Entry<float> WindowScaling; // 窗体缩放百分比
     public MelonPreferences_Entry<float> ExtraPopulationPerLevel; // 客房每级额外人口
     public MelonPreferences_Entry<float> ExpRateMultiplier; // 游戏难度经验倍率
     public MelonPreferences_Entry<bool> GoodTreasure; // 珍宝品质修改当前等级全红
+    public MelonPreferences_Entry<float> ForceContributionRate; // 非本门派功绩倍率
     
+    public MelonPreferences_Entry<float> WindowScaling; // 窗体缩放百分比
+    private MelonPreferences_Entry<bool> _useModifier ; // 使用组合键
+    private MelonPreferences_Entry<KeyCode> _key1 ; // 第一个键
+    private MelonPreferences_Entry<KeyCode> _key2 ; // 第二个键
     private static bool _isHaveAucRoll = true; 
     private static bool _isRecruitReRoll = true; 
     
@@ -86,7 +90,7 @@ public class Plugin : MelonMod
     private Vector2 mainScrollPos;
     private const float Hight = 1000;
     private const int Width = 590;
-    public Rect MainWindowRect = new(50, 100, Width, Hight);
+    public Rect MainWindowRect = new(50, 50, Width, Hight);
     public bool ShowMainWindow = false;
     private readonly string[] tabNames = { "功能开关", "测试", "属性ID", "门派特性" };
     private int selectedTab;
@@ -96,6 +100,11 @@ public class Plugin : MelonMod
     {
         Instance = this;
         _mainCategory = MelonPreferences.CreateCategory("LYModConfig", "LYModConfig");
+    
+        _useModifier = _mainCategory.CreateEntry("_useModifier", true,  description: "使用组合键");
+        _key1 = _mainCategory.CreateEntry("_key1", KeyCode.LeftAlt,  description: "键1");
+        _key2 = _mainCategory.CreateEntry("_key2", KeyCode.E,  description: "键2");
+        WindowScaling = _mainCategory.CreateEntry<float>("WindowScaling", 1,  description: "窗体缩放百分比");
         
         _studyFightRate = _mainCategory.CreateEntry<float>("studyFightRate", 1,  description: "练功房学习战斗经验倍率");
         _studyUniqeRate = _mainCategory.CreateEntry<float>("studyUniqeRate", 1,  description: "闭关室学习理论经验倍率");
@@ -125,6 +134,7 @@ public class Plugin : MelonMod
         PoisonReduceRate = _mainCategory.CreateEntry("PoisonReduceRate", 0.8f, "淬毒消耗值");
         ExtraPopulationPerLevel = _mainCategory.CreateEntry("ExtraPopulationPerLevel", 1f, "每级额外人口", "客房每级增加的额外弟子人口数量");
         ExpRateMultiplier = _mainCategory.CreateEntry("ExpRateMultiplier", 1f, "游戏难度经验倍率", "最高难度非本门经验倍率1.6（+60%）,这里默认2（+100%）");
+        ForceContributionRate = _mainCategory.CreateEntry("ForceContributionRate", 1f, "非本门功绩倍率", "非本门功绩倍率");
         
         NpcMaxBreak = _mainCategory.CreateEntry("NpcMaxBreak", false, "NPC上限突破到999");
         MaxBreak = _mainCategory.CreateEntry("MaxBreak", false, "玩家上限突破到999");
@@ -151,9 +161,7 @@ public class Plugin : MelonMod
         DrinkOneWinFlag = _mainCategory.CreateEntry("DrinkOneWinFlag", false,  description: "斗酒一轮必胜");
         GoodTreasure = _mainCategory.CreateEntry("GoodTreasure", false,  description: "珍宝等级不变品质变红");
         
-        WindowScaling = _mainCategory.CreateEntry<float>("WindowScaling", 1,  description: "窗体缩放百分比");
-        
-        
+      
         var harmony = new HarmonyLib.Harmony("LYMod");
         harmony.PatchAll(typeof(ReadBookControllerPatches));
         harmony.PatchAll(typeof(ItemListDataPatches));
@@ -189,11 +197,19 @@ public class Plugin : MelonMod
         
         ChaneMaxNum();
     }
-   
+
+    private bool IsOpenWindowTriggered()
+    {
+        if (!_useModifier.Value)
+        {
+            return Input.GetKeyDown(_key1.Value);
+        }
+        return Input.GetKey(_key1.Value) && Input.GetKeyDown(_key2.Value);
+    }
     public override void OnUpdate()
     {
         // 左alt + e 打开窗体
-        if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.E))
+        if (IsOpenWindowTriggered())
         {
             ShowMainWindow = !ShowMainWindow;
             
@@ -266,8 +282,6 @@ public class Plugin : MelonMod
 
         // 滚动区域
         mainScrollPos = GUILayout.BeginScrollView(mainScrollPos, GUILayout.Width(scaledWidth), GUILayout.Height(scaledHeight));
-
-        
         
         // 根据选择的标签页绘制不同内容
         switch (selectedTab)
@@ -599,6 +613,9 @@ public class Plugin : MelonMod
         GUILayout.Label("特殊建筑修行倍率：");
         _chanDaoRateInput ??= Convert.ToString(ChanDaoRate.Value, CultureInfo.InvariantCulture);
         _chanDaoRateInput =  GUILayout.TextField(_chanDaoRateInput);
+        GUILayout.Label("非本门功绩倍率：");
+        _forceContributionRateInput ??= Convert.ToString(ForceContributionRate.Value, CultureInfo.InvariantCulture);
+        _forceContributionRateInput =  GUILayout.TextField(_forceContributionRateInput);
         GUILayout.EndHorizontal();
         GUILayout.Space(10);
         
@@ -606,6 +623,7 @@ public class Plugin : MelonMod
         GUILayout.Label("以上填写时务必确认后点击保存修改");
         if (GUILayout.Button("保存修改"))
         {
+            ForceContributionRate.Value = float.Parse(_forceContributionRateInput);
             ExpRateMultiplier.Value = float.Parse(_expRateMultiplierInput);
             ExtraPopulationPerLevel.Value = float.Parse(_extraPopulationPerLevelInput);
             PoisonRate.Value = float.Parse(_poisonRateInput);
@@ -638,6 +656,8 @@ public class Plugin : MelonMod
 
         if (GUILayout.Button("重置"))
         {
+            ForceContributionRate.Value = 1f;
+            _forceContributionRateInput = "1";
             ExpRateMultiplier.Value = 1f;
             _extraPopulationPerLevelInput = "1";
             ExtraPopulationPerLevel.Value = 1f;
@@ -730,6 +750,7 @@ public class Plugin : MelonMod
     private string? _poisonReduceRateInput;
     private string? _extraPopulationPerLevelInput;
     private string? _expRateMultiplierInput;
+    private string? _forceContributionRateInput;
     
     private readonly List<float> _skillBaseNum = new() {12,10,8,6,4,2};
     
@@ -889,7 +910,7 @@ public class Plugin : MelonMod
                 var randomName = gdc.GenerateRandomHeroName(true, gdc.GenerateRandomHeroFamilyName(), true);
                 // 生成女性hero
                 var newHero = gc.GenerateHeroData(randomName, -1, -1, forceLv - 1, baseHero, true, 
-                    SexLimit.Female, false, false);
+                    SexLimit.Female);
                 gc.worldData.AddTempHero(newHero);
             }
             ruic.HideRecruitUI();

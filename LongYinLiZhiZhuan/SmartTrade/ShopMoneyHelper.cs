@@ -11,8 +11,6 @@ public static class ShopMoneyHelper
     
     private const int CityBaseMoney = 30000;
     private const int VillageBaseMoney = 10000;
-    private const int VillageShopCount = 2;
-    private const int CityShopCount = 6;
     
     private static int CalculateShopMoney(int fame, int areaType)
     {
@@ -29,10 +27,8 @@ public static class ShopMoneyHelper
         int baseMoney = areaType == 0 ? CityBaseMoney : VillageBaseMoney;
         int totalMoney = (int)(baseMoney * fameFactor);
         
-        int shopCount = areaType == 0 ? CityShopCount : VillageShopCount;
-        int shopMoney = totalMoney / shopCount;
         
-        int rounded = (int)Math.Floor(shopMoney / 1000.0) * 1000 + 1000;
+        int rounded = (int)Math.Floor(totalMoney / 1000.0) * 1000 + 1000;
         
         return rounded;
     }
@@ -58,7 +54,6 @@ public static class ShopMoneyHelper
             if (area.areaType is not (0 or 1)) continue;
             _areaTotalMoney[area.areaID] = CalculateFameBonusByPlayer(area.areaType);
             _areaHasChange[area.areaID] = false;
-            Plugin.LOG.Msg($"[SmartTrade] {(area.areaType == 0 ? "城市" : "村庄")} {area.areaName}: 商店金钱 = {_areaTotalMoney[area.areaID]}");
         }
     }
 

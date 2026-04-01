@@ -332,7 +332,7 @@ public class TestElement
                 }
             }
         }
-        RedQuality = GUILayout.Toggle(RedQuality, "所有物品品质是红");
+        RedQuality = GUILayout.Toggle(RedQuality, "获得的物品品质是红");
         
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();

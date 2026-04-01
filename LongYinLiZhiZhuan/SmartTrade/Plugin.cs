@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
-[assembly: MelonInfo(typeof(SmartTrade.Plugin), "SmartTrade", "1.3", "Can")]
+[assembly: MelonInfo(typeof(SmartTrade.Plugin), "SmartTrade", "1.4", "Can")]
 [assembly: MelonGame("TppStudio", "LongYinLiZhiZhuan")]
 [assembly: MelonPlatformDomain(MelonPlatformDomainAttribute.CompatibleDomains.IL2CPP)]
 
@@ -30,6 +30,7 @@ namespace SmartTrade
         // 当前英雄口才值
         public static float KouCai;
         public static List<TableListEntity> TableDatas = new();
+        public static bool SellHighQuality = true;
         
         #endregion
 
@@ -51,6 +52,7 @@ namespace SmartTrade
         private Toggle _toggleAll;
         private Toggle _toggleUp;
         private Toggle _toggleDown;
+        private Toggle _sellHighQualityToggle;
         private Button _refreshButton;
         private Text _countLabel;
         private GameObject _listContent;
@@ -347,6 +349,15 @@ namespace SmartTrade
             }
             #endregion
 
+            #region 售卖精良以上Toggle
+            _sellHighQualityToggle = CreateToggle(toolbar1Rect, "售卖精良以上", -50, 120f);
+            if (_sellHighQualityToggle != null)
+            {
+                _sellHighQualityToggle.isOn = true;
+                _sellHighQualityToggle.onValueChanged.AddListener(new Action<bool>(isOn => { SellHighQuality = isOn; }));
+            }
+            #endregion
+
             #region 已购入标签
             var countLabelObj = CreateUIObject("CountLabel", toolbar1Rect);
             var countLabelComp = countLabelObj.AddComponent(Il2CppType.Of<Text>());
@@ -613,6 +624,7 @@ namespace SmartTrade
             
             var scrollRectComp = scrollObj.AddComponent(Il2CppType.Of<ScrollRect>());
             _scrollRect = scrollRectComp?.TryCast<ScrollRect>();
+            _scrollRect?.scrollSensitivity = 30f;
             
             var scrollBgComp = scrollObj.AddComponent(Il2CppType.Of<RawImage>());
             var scrollBg = scrollBgComp?.TryCast<RawImage>();

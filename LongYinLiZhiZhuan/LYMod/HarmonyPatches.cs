@@ -618,6 +618,24 @@ public class GameControllerPatches
 
 public class HeroDataPatch
 {
+    //门派功绩倍率
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeForceContribution))]
+    public static bool HeroData_ChangeForceContribution_Prefix(HeroData __instance, ref float num, 
+        bool showInfo, int targetForce = -1)
+    {
+        if (__instance == null) return true;
+        var gc = GameController.Instance;
+        if (gc == null) return true;
+        var forceId = gc.worldData.Player()?.belongForceID ?? -1;
+        if (forceId == -1) return true;
+        if (forceId != targetForce && Plugin.Instance.ForceContributionRate.Value > 1)
+        {
+            num *= Plugin.Instance.ForceContributionRate.Value;
+        }
+        return true;
+    }
+    
     // 所有门派特性生效
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.HaveForceFunction))]

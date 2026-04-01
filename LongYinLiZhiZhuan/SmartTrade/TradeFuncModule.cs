@@ -265,6 +265,9 @@ namespace SmartTrade
             var icons = leftList.itemGrid?.GetComponentsInChildren<ItemIconController>(true);
             if (icons == null) return;
             
+            var shopMoney = _currentTradeUI.rightList?.targetItemList?.money ?? 0;
+            var totalSellPrice = 0;
+            
             foreach (var purchaseItem in Plugin.PurchaseItems)
             {
                 if (purchaseItem?.ItemData == null) continue;
@@ -274,7 +277,18 @@ namespace SmartTrade
                     if (icon?.itemData == null) continue;
                     if (ReferenceEquals(icon.itemData, purchaseItem.ItemData) && icon.itemData.treasureData.fullIdentified)
                     {
+                        if (icon.itemData.itemLv >= 3 && !Plugin.SellHighQuality)
+                        {
+                            continue;
+                        }
                         
+                        var sellPrice = icon.GetItemPrice(false);
+                        if (totalSellPrice + sellPrice > shopMoney)
+                        {
+                            continue;
+                        }
+                        
+                        totalSellPrice += sellPrice;
                         icon.OnClick();
                         break;
                     }
