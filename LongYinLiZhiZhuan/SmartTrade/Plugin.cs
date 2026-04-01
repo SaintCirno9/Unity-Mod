@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
-[assembly: MelonInfo(typeof(SmartTrade.Plugin), "SmartTrade", "1.2", "Can")]
+[assembly: MelonInfo(typeof(SmartTrade.Plugin), "SmartTrade", "1.3", "Can")]
 [assembly: MelonGame("TppStudio", "LongYinLiZhiZhuan")]
 [assembly: MelonPlatformDomain(MelonPlatformDomainAttribute.CompatibleDomains.IL2CPP)]
 
@@ -26,10 +26,10 @@ namespace SmartTrade
         // 地区买卖百分比
         public static float AreaRate;
         // 记录物品，物品买入价格
-        public static List<PurchaseItem> PurchaseItems = [];
+        public static List<PurchaseItem> PurchaseItems = new();
         // 当前英雄口才值
         public static float KouCai;
-        public static List<TableListEntity> TableDatas = [];
+        public static List<TableListEntity> TableDatas = new();
         
         #endregion
 
@@ -58,7 +58,7 @@ namespace SmartTrade
         
         private int _currentFilter = 0;
         private bool _sortByIncome = true;
-        private readonly List<GameObject> _listItems = [];
+        private readonly List<GameObject> _listItems = new();
 
         #endregion
 

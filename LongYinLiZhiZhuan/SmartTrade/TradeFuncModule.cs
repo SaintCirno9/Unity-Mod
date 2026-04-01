@@ -272,8 +272,9 @@ namespace SmartTrade
                 foreach (var icon in icons)
                 {
                     if (icon?.itemData == null) continue;
-                    if (ReferenceEquals(icon.itemData, purchaseItem.ItemData))
+                    if (ReferenceEquals(icon.itemData, purchaseItem.ItemData) && icon.itemData.treasureData.fullIdentified)
                     {
+                        
                         icon.OnClick();
                         break;
                     }
