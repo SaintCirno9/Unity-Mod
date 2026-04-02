@@ -386,7 +386,7 @@ public static class TradeUIControllerPatch
         {
             foreach (var icon in rightOutList)
             {
-                if (icon?.itemData == null) continue;
+                if (icon?.itemData == null || icon.itemData.type != ItemType.Treasure) continue;
                 var price = icon.GetItemPrice(true);
                 Plugin.PurchaseItems.Add(new PurchaseItem(icon.itemData, price));
             }
