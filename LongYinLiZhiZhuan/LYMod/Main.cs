@@ -14,7 +14,7 @@ namespace LYMod;
 public static class ModConstants
 {
     public const string ModName = "LYMod";     // 插件名
-    public const string ModVersion = "3.3";    // 版本号
+    public const string ModVersion = "3.4";    // 版本号
     public const string ModAuthor = "Can";     // 作者
 }
 
@@ -70,7 +70,7 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<float> ChanDaoRate; //禅宗道法修行倍率
     public MelonPreferences_Entry<string> ForceSpeFunctions; // 门派特性
     public MelonPreferences_Entry<float> PoisonRate; // 淬毒倍率
-    public MelonPreferences_Entry<float> PoisonReduceRate; // 淬毒消耗倍率
+    public MelonPreferences_Entry<bool> PoisonNumReduceFlag; // 淬毒值消耗开关
     public MelonPreferences_Entry<bool> TimeFreezeFlag; // 时间停止
     public MelonPreferences_Entry<bool> EffeminateManFlag; // 女性恋爱自由
     public MelonPreferences_Entry<bool> DrinkOneWinFlag; // 斗酒一轮必胜
@@ -78,6 +78,9 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<float> ExpRateMultiplier; // 游戏难度经验倍率
     public MelonPreferences_Entry<bool> GoodTreasure; // 珍宝品质修改当前等级全红
     public MelonPreferences_Entry<float> ForceContributionRate; // 非本门派功绩倍率
+    public MelonPreferences_Entry<bool> BattleSkipFlag; // 跳过战斗
+    public MelonPreferences_Entry<bool> BreakMaxLimitFlag; // 突破潜力限制
+    public MelonPreferences_Entry<bool> BreakMaxLimitLittleFlag; // 突破潜力限制（轻微）
     
     public MelonPreferences_Entry<float> WindowScaling; // 窗体缩放百分比
     private MelonPreferences_Entry<bool> _useModifier ; // 使用组合键
@@ -131,11 +134,11 @@ public class Plugin : MelonMod
         ChanDaoRate = _mainCategory.CreateEntry<float>("ChanDaoRate", 1, "禅宗道法修行倍率");
         ForceSpeFunctions = _mainCategory.CreateEntry("ForceSpeFunctions", "", "选择的门派特性");
         PoisonRate = _mainCategory.CreateEntry<float>("PoisonRate", 1, "淬毒值倍率");
-        PoisonReduceRate = _mainCategory.CreateEntry("PoisonReduceRate", 0.8f, "淬毒消耗值");
         ExtraPopulationPerLevel = _mainCategory.CreateEntry("ExtraPopulationPerLevel", 1f, "每级额外人口", "客房每级增加的额外弟子人口数量");
         ExpRateMultiplier = _mainCategory.CreateEntry("ExpRateMultiplier", 1f, "游戏难度经验倍率", "最高难度非本门经验倍率1.6（+60%）,这里默认2（+100%）");
         ForceContributionRate = _mainCategory.CreateEntry("ForceContributionRate", 1f, "非本门功绩倍率", "非本门功绩倍率");
         
+        PoisonNumReduceFlag = _mainCategory.CreateEntry("PoisonNumReduceFlag", false, "淬毒消耗开关");
         NpcMaxBreak = _mainCategory.CreateEntry("NpcMaxBreak", false, "NPC上限突破到999");
         MaxBreak = _mainCategory.CreateEntry("MaxBreak", false, "玩家上限突破到999");
         _playerOutForceContribution = _mainCategory.CreateEntry("playerOutForceContribution", false, "非本门功绩");
@@ -160,6 +163,9 @@ public class Plugin : MelonMod
         EffeminateManFlag = _mainCategory.CreateEntry("EffeminateManFlag", false,  description: "女性恋爱自由");
         DrinkOneWinFlag = _mainCategory.CreateEntry("DrinkOneWinFlag", false,  description: "斗酒一轮必胜");
         GoodTreasure = _mainCategory.CreateEntry("GoodTreasure", false,  description: "珍宝等级不变品质变红");
+        BattleSkipFlag = _mainCategory.CreateEntry("BattleSkipFlag", false,  description: "跳过战斗");
+        BreakMaxLimitFlag = _mainCategory.CreateEntry("BreakMaxLimitFlag", false,  description: "突破潜力限制");
+        BreakMaxLimitLittleFlag = _mainCategory.CreateEntry("BreakMaxLimitLittleFlag", false,  description: "突破潜力限制（轻微）");
         
       
         var harmony = new HarmonyLib.Harmony("LYMod");
@@ -176,7 +182,6 @@ public class Plugin : MelonMod
         harmony.PatchAll(typeof(BookWriterUIControllerPatches));
         harmony.PatchAll(typeof(BreakThroughChoiceControllerPatch));
         harmony.PatchAll(typeof(AreaBuildingDataPatches));
-        harmony.PatchAll(typeof(CraftPoisonUIControllerPatches));
         harmony.PatchAll(typeof(HeroTagIconControllerPatches));
         harmony.PatchAll(typeof(LivingSkillPatches));
         harmony.PatchAll(typeof(IdentifyMatchControllerPatches));
@@ -231,7 +236,19 @@ public class Plugin : MelonMod
             TryZhongyuanRoll();
             TryRefreshRecruitList();
         }
-
+        
+        if (BreakMaxLimitFlag.Value || BreakMaxLimitLittleFlag.Value)
+        {
+            GlobalData.HeroMaxAttriNum = 999;
+            GlobalData.HeroMaxFightSkillNum = 999;
+            GlobalData.HeroMaxLivingSkillNum = 999;
+        }
+        else
+        {
+            GlobalData.HeroMaxAttriNum = 120;
+            GlobalData.HeroMaxFightSkillNum = 120;
+            GlobalData.HeroMaxLivingSkillNum = 100;
+        }
        
         
         // if (Input.GetKeyDown(KeyCode.BackQuote))
@@ -486,6 +503,38 @@ public class Plugin : MelonMod
             _mainCategory?.SaveToFile();
         } 
         GUILayout.EndHorizontal();
+        GUILayout.Space(10);
+        
+        GUILayout.BeginHorizontal();
+        var battleSkipFlag = GUILayout.Toggle(BattleSkipFlag.Value, "跳过战斗");
+        if (battleSkipFlag != BattleSkipFlag.Value)
+        {
+            BattleSkipFlag.Value = battleSkipFlag;
+            _mainCategory?.SaveToFile();
+        }  
+        var poisonNumReduceFlag = GUILayout.Toggle(PoisonNumReduceFlag.Value, "淬毒不减");
+        if (poisonNumReduceFlag != PoisonNumReduceFlag.Value)
+        {
+            PoisonNumReduceFlag.Value = poisonNumReduceFlag;
+            _mainCategory?.SaveToFile();
+        } 
+        GUILayout.EndHorizontal();
+        GUILayout.Space(10);
+        
+        GUILayout.BeginHorizontal();
+        var breakMaxLimitLittleFlag = GUILayout.Toggle(BreakMaxLimitLittleFlag.Value, "突破潜力限制(潜力限制)");
+        if (breakMaxLimitLittleFlag != BreakMaxLimitLittleFlag.Value)
+        {
+            BreakMaxLimitLittleFlag.Value = breakMaxLimitLittleFlag;
+            _mainCategory?.SaveToFile();
+        }
+        var breakMaxLimitFlag = GUILayout.Toggle(BreakMaxLimitFlag.Value, "突破潜力限制(无潜力限制)");
+        if (breakMaxLimitFlag != BreakMaxLimitFlag.Value)
+        {
+            BreakMaxLimitFlag.Value = breakMaxLimitFlag;
+            _mainCategory?.SaveToFile();
+        } 
+        GUILayout.EndHorizontal();
         GUILayout.EndVertical();
         GUILayout.Space(10);
 
@@ -593,9 +642,6 @@ public class Plugin : MelonMod
         GUILayout.Label("淬毒值倍率：");
         _poisonRateInput ??= Convert.ToString(PoisonRate.Value, CultureInfo.InvariantCulture);
         _poisonRateInput = GUILayout.TextField(_poisonRateInput);
-        GUILayout.Label("淬毒消耗率(0-0.8)：");
-        _poisonReduceRateInput ??= Convert.ToString(PoisonReduceRate.Value, CultureInfo.InvariantCulture);
-        _poisonReduceRateInput = GUILayout.TextField(_poisonReduceRateInput);
         GUILayout.EndHorizontal();
         GUILayout.Space(10);
         
@@ -627,7 +673,6 @@ public class Plugin : MelonMod
             ExpRateMultiplier.Value = float.Parse(_expRateMultiplierInput);
             ExtraPopulationPerLevel.Value = float.Parse(_extraPopulationPerLevelInput);
             PoisonRate.Value = float.Parse(_poisonRateInput);
-            PoisonReduceRate.Value = float.Parse(_poisonReduceRateInput);
             ChanDaoRate.Value = float.Parse(_chanDaoRateInput);
             ZhongyuanLy.Value = float.Parse(_zhongyuanLvInput);
             BattleChangeSkillFightRate.Value = float.Parse(_battleChangeSkillFightRateInput);
@@ -747,7 +792,6 @@ public class Plugin : MelonMod
     private string? _zhongyuanLvInput;
     private string? _chanDaoRateInput;
     private string? _poisonRateInput;
-    private string? _poisonReduceRateInput;
     private string? _extraPopulationPerLevelInput;
     private string? _expRateMultiplierInput;
     private string? _forceContributionRateInput;

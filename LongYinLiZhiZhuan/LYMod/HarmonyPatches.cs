@@ -7,36 +7,8 @@ namespace LYMod;
 using HarmonyLib;
 using Il2Cpp;
 
-[HarmonyPatch(typeof(HeroData), nameof(HeroData.GetGameDifficultyExpRate))]
-public static class HeroDataPatches
-{
-    [HarmonyPostfix]
-    public static void Postfix(HeroData __instance, ref float __result)
-    {
-        if (Mathf.Approximately(Plugin.Instance.ExpRateMultiplier.Value, 1))
-            return;
 
-        var multiplier = Plugin.Instance.ExpRateMultiplier.Value;
-        var gc = GameController.Instance;
-        if (__instance != null && gc != null)
-        {
-            var player = gc.worldData.Player();
-            var playerForceId = player?.belongForceID ?? -1;
-            if (playerForceId == -1)
-            {
-                //玩家无门派时，除了玩家所有人都修改倍率
-                if (__instance.heroID != 0)
-                    __result = multiplier;
-            }
-            else
-            {
-                //玩家有门派时，不和玩家一个门派的人物倍率修改
-                if (__instance.belongForceID != playerForceId) 
-                    __result = multiplier;
-            }
-        }
-    }
-}
+
 [HarmonyPatch(typeof(AreaBuildingData))]
 public static class AreaBuildingDataPatch
 {
@@ -84,6 +56,15 @@ public class TimeDataPatches
 
 public class PoisonPatches
 {
+    private static Dictionary<string, float> _poisonValuesBeforeBattle = new();
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(CraftPoisonUIController), nameof(CraftPoisonUIController.GetCostTime))]
+    public static void CraftPoisonUIController_GetCostTime_Postfix(CraftPoisonUIController __instance, ref int __result)
+    {
+        if (__instance != null)
+            __result = 1;
+    }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(CraftPoisonUIController), nameof(CraftPoisonUIController.GetChangePoisonNum))]
     public static void GetChangePoisonNum_Postfix(ref float __result)
@@ -93,15 +74,54 @@ public class PoisonPatches
             __result *= Plugin.Instance.PoisonRate.Value;
         }
     }
+    
     [HarmonyPrefix]
-    [HarmonyPatch(typeof(HeroData), nameof(HeroData.ManageGetEquipPoison))]
-    public static void ManageGetEquipPoison_Prefix(ref float reduceRate)
+    [HarmonyPatch(typeof(BattleController), nameof(BattleController.StartBattleButtonClicked))]
+    public static void StartBattleButtonClicked_Prefix(BattleController __instance)
     {
-        if (Plugin.Instance.PoisonRate.Value < 0.8)
+        _poisonValuesBeforeBattle.Clear();
+        var gc = GameController.Instance;
+        if (gc == null) return;
+        var player = gc.worldData.Player();
+        var items = player.itemListData.allItem;
+        if (items == null || items.Count == 0) return;
+        foreach (var item in items)
         {
-            reduceRate *=  Plugin.Instance.PoisonReduceRate.Value;
+            if (item.Equiped() && item.equipmentData?.equipPoisonData != null && item.equipmentData.equipPoisonData.poisonNum > 0)
+            {
+                _poisonValuesBeforeBattle[item.name] = item.equipmentData.equipPoisonData.poisonNum;
+                Plugin.LOG.Msg($"[Poison] Before Battle - Item: {item.name}, poisonNum: {item.equipmentData.equipPoisonData.poisonNum}");
+            }
         }
     }
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(BattleController), nameof(BattleController.BattleRealEnd))]
+    public static void BattleRealEnd_Postfix(BattleController __instance)
+    {
+        if (__instance == null) return;
+        var gc = GameController.Instance;
+        if (gc == null) return;
+        var player = gc.worldData.Player();
+        var items = player.itemListData.allItem;
+        if (items == null || items.Count == 0) return;
+        foreach (var item in items)
+        {
+            if (item.Equiped() && item.equipmentData?.equipPoisonData != null)
+            {
+                var beforeValue = _poisonValuesBeforeBattle.TryGetValue(item.name, out var v) ? v : 0;
+                var afterValue = item.equipmentData.equipPoisonData.poisonNum;
+                var diff = afterValue - beforeValue;
+                //Plugin.LOG.Msg($"[Poison] After Battle - Item: {item.name}, Before: {beforeValue}, After: {afterValue}, Diff: {diff}");
+                if (beforeValue > 0 && diff < 0)
+                {
+                    item.equipmentData.equipPoisonData.poisonNum = beforeValue;
+                }
+            }
+        }
+    }
+    
+   
 }
 
 public class MeditationDataPatches
@@ -443,16 +463,7 @@ public class HeroTagIconControllerPatches
         }
     }
 }
-public class CraftPoisonUIControllerPatches
-{
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(CraftPoisonUIController), nameof(CraftPoisonUIController.GetCostTime))]
-    public static void CraftPoisonUIController_GetCostTime_Postfix(CraftPoisonUIController __instance, ref int __result)
-    {
-        if (__instance != null)
-            __result = 1;
-    }
-}
+
 public class AreaBuildingDataPatches
 {
     [HarmonyPostfix]
@@ -618,6 +629,105 @@ public class GameControllerPatches
 
 public class HeroDataPatch
 {
+    # region 人物潜力限制开关
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeAttri))]
+    public static void HeroData_ChangeAttri_Postfix(HeroData __instance, int id, float num, 
+        bool showText, bool skillUpgrade)
+    {
+        if (__instance == null || !skillUpgrade || num <= 0 || __instance.heroID != 0 
+            || !Plugin.Instance.BreakMaxLimitFlag.Value) return;
+        
+        var baseAttri = __instance.baseAttri;
+        var maxAttri = __instance.maxAttri;
+        if (baseAttri == null || maxAttri == null) return;
+        if (id < 0 || id >= baseAttri.Count || id >= maxAttri.Count) return;
+        
+        var currentVal = baseAttri[id];
+        var maxVal = maxAttri[id];
+        if (currentVal > maxVal)
+        {
+            maxAttri[id] = currentVal;
+        }
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeFightSkill))]
+    public static void HeroData_ChangeFightSkill_Postfix(HeroData __instance, int id, float num, 
+        bool showText, bool skillUpgrade)
+    {
+        if (__instance == null || !skillUpgrade || num <= 0 || __instance.heroID != 0
+            || !Plugin.Instance.BreakMaxLimitFlag.Value) return;
+        
+        var baseFightSkill = __instance.baseFightSkill;
+        var maxFightSkill = __instance.maxFightSkill;
+        if (baseFightSkill == null || maxFightSkill == null) return;
+        if (id < 0 || id >= baseFightSkill.Count || id >= maxFightSkill.Count) return;
+        
+        var currentVal = baseFightSkill[id];
+        var maxVal = maxFightSkill[id];
+        if (currentVal > maxVal)
+        {
+            maxFightSkill[id] = currentVal;
+        }
+    }
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeLivingSkill))]
+    public static void HeroData_ChangeLivingSkill_Postfix(HeroData __instance, int id, float num, 
+        bool showText, bool skillUpgrade)
+    {
+        if (__instance == null || !skillUpgrade || num <= 0 || __instance.heroID != 0
+            || !Plugin.Instance.BreakMaxLimitFlag.Value) return;
+        
+        var baseLivingSkill = __instance.baseLivingSkill;
+        var maxLivingSkill = __instance.maxLivingSkill;
+        if (baseLivingSkill == null || maxLivingSkill == null) return;
+        if (id < 0 || id >= baseLivingSkill.Count || id >= maxLivingSkill.Count) return;
+        
+        var currentVal = baseLivingSkill[id];
+        var maxVal = maxLivingSkill[id];
+        if (currentVal > maxVal)
+        {
+            maxLivingSkill[id] = currentVal;
+        }
+    }
+    
+    
+    #endregion
+    
+    
+    /**
+     * 游戏难度倍率默认最高难度1.6
+     */
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetGameDifficultyExpRate))]
+    public static void Postfix(HeroData __instance, ref float __result)
+    {
+        if (Mathf.Approximately(Plugin.Instance.ExpRateMultiplier.Value, 1))
+            return;
+
+        var multiplier = Plugin.Instance.ExpRateMultiplier.Value;
+        var gc = GameController.Instance;
+        if (__instance != null && gc != null)
+        {
+            var player = gc.worldData.Player();
+            var playerForceId = player?.belongForceID ?? -1;
+            if (playerForceId == -1)
+            {
+                //玩家无门派时，除了玩家所有人都修改倍率
+                if (__instance.heroID != 0)
+                    __result = multiplier;
+            }
+            else
+            {
+                //玩家有门派时，不和玩家一个门派的人物倍率修改
+                if (__instance.belongForceID != playerForceId) 
+                    __result = multiplier;
+            }
+        }
+    }
     //门派功绩倍率
     [HarmonyPrefix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeForceContribution))]

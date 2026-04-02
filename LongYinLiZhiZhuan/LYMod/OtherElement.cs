@@ -101,7 +101,7 @@ public class OtherElement
     {
         enabledForceIDs.Clear();
         allForces.Clear();
-        // 读取帮派数据
+        // 读取门派数据
         var gc = GameController.Instance;
         if (gc?.worldData?.Forces != null)
         {
