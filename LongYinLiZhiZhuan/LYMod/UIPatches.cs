@@ -7,6 +7,13 @@ namespace LYMod;
 [HarmonyPatch]
 public static class UIPatches
 {
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(BuildQuickButtonController), nameof(BuildQuickButtonController.OnPointerEnter))]
+    public static bool BuildQuickButtonController_OnPointerEnter(ref BuildQuickButtonController __instance)
+    {
+        return AllowGamePointerInput();
+    }
+    
     // Game/UI click paths vary, so pointer blocking stays at the Unity input layer.
     private static bool AllowGamePointerInput()
     {
