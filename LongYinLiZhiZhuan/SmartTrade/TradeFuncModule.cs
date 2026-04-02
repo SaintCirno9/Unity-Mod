@@ -396,7 +396,7 @@ public static class TradeUIControllerPatch
         {
             foreach (var icon in leftOutList)
             {
-                if (icon?.itemData == null) continue;
+                if (icon?.itemData == null || icon.itemData.type != ItemType.Treasure) continue;
                 Plugin.PurchaseItems.Remove(new PurchaseItem(icon.itemData, 0));
             }
         }
