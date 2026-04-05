@@ -24,6 +24,8 @@
     
     <ItemGroup>
       <Compile Remove="Il2Cpp\**\*.cs" />
+      <Compile Remove="GuiSkin.cs" />
+      <Compile Remove="TestElement.cs" />
     </ItemGroup>
 
     <ItemGroup>

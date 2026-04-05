@@ -3,157 +3,36 @@ using UnityEngine;
 
 namespace LYMod;
 
-public class OtherElement
+public static class OtherElement
 {
-    public static HashSet<int> enabledForceIDs = new HashSet<int>();
-    private static List<ForceData> allForces = new List<ForceData>();
-    private static string searchText = "";
-    private static Vector2 scrollPosition;
-    private static int selectedForceID = -1;
+    
     
     public static void ForceSpeFunction()
     {
-        GUILayout.Space(5);
-        GUILayout.BeginVertical("Box");
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("刷新", GUILayout.Width(60)))
-        {
-            RefreshForceList();
-        }
-        if (GUILayout.Button("全选", GUILayout.Width(60)))
-        {
-            foreach (var force in allForces)
-            {
-                enabledForceIDs.Add(force.forceID);
-            }
-        }
-        if (GUILayout.Button("保存", GUILayout.Width(60)))
-        {
-            Plugin.Instance.ForceSpeFunctions.Value = string.Join(",", enabledForceIDs.Select(n => n.ToString()));
-            Plugin.Instance._mainCategory?.SaveToFile();
-        }
-        if (GUILayout.Button("清空", GUILayout.Width(60)))
-        {
-            enabledForceIDs.Clear();
-        }
-        GUILayout.EndHorizontal();
-        GUILayout.EndVertical();
-        GUILayout.Space(10);
-        
-        GUILayout.BeginVertical("Box");
-        GUILayout.BeginHorizontal();
-        
-        GUILayout.EndHorizontal();
-        GUILayout.Space(10);
-        
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("搜索:", GUILayout.Width(45));
-        searchText = GUILayout.TextField(searchText, GUILayout.Width(150));
-        GUILayout.Label($"已选: {enabledForceIDs.Count}", GUILayout.Width(80));
-        GUILayout.EndHorizontal();
-        GUILayout.EndVertical();
-        GUILayout.Space(10);
-        
-        foreach (var force in allForces)
-        {
-            if (force == null) continue;
+        var scale = Plugin.Instance._windowScaling.Value;
+        var builder = UIHelper.CreateBuilder(scale);
+        builder.BeginFoldout("门派特性")
+            .DrawForceSpeFunction()
+            .EndFoldout();
 
-            if (!string.IsNullOrEmpty(searchText) &&
-                !force.forceName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            bool enabled = enabledForceIDs.Contains(force.forceID);
-            GUILayout.BeginVertical("Box");
-            GUILayout.BeginHorizontal();
-            bool newEnabled = GUILayout.Toggle(enabled, "", GUILayout.Width(20));
-            if (newEnabled != enabled)
-            {
-                if (newEnabled)
-                    enabledForceIDs.Add(force.forceID);
-                else
-                    enabledForceIDs.Remove(force.forceID);
-            }
-
-            if (GUILayout.Button($"{force.forceName} (ID:{force.forceID})", GUI.skin.label, GUILayout.Width(340)))
-            {
-                selectedForceID = selectedForceID == force.forceID ? -1 : force.forceID;
-            }
-
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-            if (selectedForceID == force.forceID && !string.IsNullOrEmpty(force.speFunctionDescribe))
-            {
-                GUILayout.BeginVertical(GUI.skin.box);
-                string desc = force.speFunctionDescribe
-                    .Replace("<b>", "")
-                    .Replace("</b>", "")
-                    .Replace("\\n", "\n");
-                GUILayout.Label(desc, GUI.skin.label);
-                GUILayout.EndVertical();
-            }
-        }
-
+        builder.BeginFoldout("门派建筑效果")
+            
+            .EndFoldout();
     }
-    
-    public static void RefreshForceList()
-    {
-        enabledForceIDs.Clear();
-        allForces.Clear();
-        // 读取门派数据
-        var gc = GameController.Instance;
-        if (gc?.worldData?.Forces != null)
-        {
-            foreach (var force in gc.worldData.Forces)
-            {
-                if (force != null)
-                {
-                    allForces.Add(force);
-                }
-            }
-        }
-        // 读取已经选中的数据
-        if  (Plugin.Instance.ForceSpeFunctions.Value == "")
-        {
-            var heroData = gc?.worldData?.Player();
-            if (heroData?.belongForceID != null)
-            {
-                enabledForceIDs.Add(heroData.belongForceID);
-            } 
-        }
 
-        if (Plugin.Instance.ForceSpeFunctions.Value != "")
-        {
-            var heroData = gc?.worldData?.Player();
-            enabledForceIDs = new HashSet<int>(
-                Plugin.Instance.ForceSpeFunctions.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(int.Parse)
-            );
-            if (heroData?.belongForceID != null)
-            {
-                enabledForceIDs.Add(heroData.belongForceID);
-            }
-        }
-    }
- 
-    
-    
-    
     
     
     public static void Label()
     {
         const float fontScale = 1.5f;
         const int columnCount = 3;
-        const float columnWidth = 145f;
         const float rowHeight = 30f;
         const float spacing = 8f;
 
         var gridStyle = new GUIStyle(GUI.skin.label)
         {
             alignment = TextAnchor.MiddleLeft,
-            fixedWidth = columnWidth,
+            fixedWidth = 145f,
             fixedHeight = rowHeight,
             margin = new RectOffset(4, 4, 4, 4),
             wordWrap = false,
@@ -161,7 +40,6 @@ public class OtherElement
             fontSize = Mathf.RoundToInt(14 * fontScale)
         };
 
-        // ====================== 2. 属性ID数组（按顺序填写，后续只需改这里） ======================
         var attrLabels = new[]
         {
             "0:力道", "1:灵巧", "2:智力", "3:意志", "4:体质",
@@ -218,7 +96,6 @@ public class OtherElement
             "212:好感获取", "214:恶名减少", "213:本门武学威力"
         };
 
-        // ====================== 3. 核心绘制逻辑（自动排列，完美对齐） ======================
         GUILayout.BeginVertical("Box"); 
 
         for (var i = 0; i < attrLabels.Length; i += columnCount)

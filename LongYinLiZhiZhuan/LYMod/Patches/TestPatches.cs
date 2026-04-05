@@ -1,8 +1,7 @@
 ﻿using HarmonyLib;
 using Il2Cpp;
-using Object = UnityEngine.Object;
 
-namespace LYMod;
+namespace LYMod.Patches;
 
 [HarmonyPatch]
 public class TestPatches
@@ -16,66 +15,7 @@ public class TestPatches
         __instance.playerLose = false;
     }
 
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(PlotController), nameof(PlotController.AskHeroMakeFriend))]
-    public static void PlotController_AskHeroMakeFriend_Postfix(PlotController __instance)
-    {
-        if (!Plugin.Instance.EffeminateManFlag.Value) return;
-        
-        var shero = __instance.sourceInteractHero;
-        if (shero == null)
-            shero = GameController.Instance.worldData.Player();
-        var targetHero = __instance.targetInteractHero;
-        if (shero == null || targetHero == null) return;
-        
-        if (!shero.isFemale) return;
-        
-        var prefab = __instance.plotInteractPrefab;
-        var plotPanel = __instance.plotPanel;
-        if (prefab == null || plotPanel == null) return;
-        
-        var interactGrid = plotPanel.transform.Find("InteractGrid");
-        if (interactGrid == null) return;
-        
-        for (int i = 0; i < interactGrid.childCount; i++)
-        {
-            var child = interactGrid.GetChild(i);
-            var existingController = child.GetComponent<PlotInteractController>();
-            if (existingController?.choiceData?.callFuc == "AskHeroToLover")
-            {
-                return;
-            }
-        }
-        
-        var newObj = Object.Instantiate(prefab, interactGrid);
-        var controller = newObj.GetComponent<PlotInteractController>();
-        if (controller == null) return;
-        
-        var choiceData = new SinglePlotChoiceData();
-        choiceData.choiceText = "结缘";
-        choiceData.callFuc = "AskHeroToLover";
-        var requirements = new Il2CppSystem.Collections.Generic.List<PlotChoiceRequirement>();
-        requirements.Add(new PlotChoiceRequirement(ChoiceRequirementType.FavorDegree,100));
-        choiceData.requirements = requirements;
-        choiceData.relations = new Il2CppSystem.Collections.Generic.List<RelationRequirementType>();
-        choiceData.costResource = new Il2CppSystem.Collections.Generic.List<ResourceData>();
-        controller.choiceData = choiceData;
-        controller.meetRequire = true;
-        controller.meetCost = true;
-        
-        var labelChild = newObj.transform.Find("Label");
-        var requireChild = newObj.transform.Find("Require");
-        
-        var unityText = labelChild.GetComponent<UnityEngine.UI.Text>();
-        var requireText = requireChild.GetComponent<UnityEngine.UI.Text>();
-        
-        unityText.text = "结缘";
-        requireText.text = "需要好感100";
-        requireChild.gameObject.SetActive(false);
-        requireChild.gameObject.SetActive(true);
-        labelChild.gameObject.SetActive(false);
-        labelChild.gameObject.SetActive(true);
-    }
+  
 
     private static readonly int[] MaximizedLayout =
     {
@@ -98,7 +38,7 @@ public class TestPatches
 
     private static AreaTileType IntToTileType(int value)
     {
-        if (TestElement.MaxAreaFlag1)
+        if (Plugin.Instance.MaxAreaFlag1)
         {
             return value switch
             {
@@ -125,7 +65,7 @@ public class TestPatches
     [HarmonyPatch(typeof(GameController), nameof(GameController.LoadAreaMapData))]
     public static void LoadAreaMapDataPostfix(GameController __instance, AreaData? areaData)
     {
-        if (__instance != null && areaData != null && TestElement.MaxAreaFlag)
+        if (__instance != null && areaData != null && Plugin.Instance.MaxAreaFlag)
         {
             var tiles = areaData.areaTiles;
             if (tiles == null || tiles.Count == 0) return;
@@ -143,11 +83,11 @@ public class TestPatches
             var targetSize = 15;
             Plugin.LOG.Msg($"[LoadAreaMapData] 目标尺寸: {targetSize}x{targetSize}, " +
                            $"当前尺寸: {areaData.mapWidth}x{areaData.mapHeight}");
-            Plugin.LOG.Msg($"[LoadAreaMapData] MaxAreaFlag1: {TestElement.MaxAreaFlag1}");
+            Plugin.LOG.Msg($"[LoadAreaMapData] MaxAreaFlag1: {Plugin.Instance.MaxAreaFlag1}");
 
             if (areaData.mapWidth == targetSize && areaData.mapHeight == targetSize)
             {
-                if (TestElement.MaxAreaFlag1)
+                if (Plugin.Instance.MaxAreaFlag1)
                 {
                     Plugin.LOG.Msg("[LoadAreaMapData] 已是最大尺寸，保留城墙");
                 }
@@ -185,8 +125,8 @@ public class TestPatches
             areaData.mapHeight = targetSize;
 
             Plugin.LOG.Msg($"[LoadAreaMapData] 完成！新建 {newTiles.Count} 个地块");
-            TestElement.MaxAreaFlag = false;
-            TestElement.MaxAreaFlag1 = false;
+            Plugin.Instance.MaxAreaFlag = false;
+            Plugin.Instance.MaxAreaFlag1 = false;
         }
     }
     
