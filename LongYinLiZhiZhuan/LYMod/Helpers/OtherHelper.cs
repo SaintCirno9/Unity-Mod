@@ -21,17 +21,16 @@ public static class OtherHelper
     public static void ChaneMaxNum()
     {
         List<float> skillBaseNum = new() {12,10,8,6,4,2};
-        if (Plugin.Instance.MaxSkillNum.Value > 1)
+        
+        var maxSkillNum = GlobalData.MaxSkillNum;
+        if (maxSkillNum.Count == 6)
         {
-            var maxSkillNum = GlobalData.MaxSkillNum;
-            if (maxSkillNum.Count == 6)
+            for (int i = 0; i < 6; i++)
             {
-                for (int i = 0; i < 6; i++)
-                {
-                    maxSkillNum[i] = skillBaseNum[i] * Plugin.Instance.MaxSkillNum.Value;
-                }
+                maxSkillNum[i] = skillBaseNum[i] * Plugin.Instance.MaxSkillNum.Value;
             }
         }
+        GlobalData.MaxSkillNum = maxSkillNum;
     }
     // 输入框文本转字典
     public static Dictionary<int, float>? ParseInputBox(string inputText)

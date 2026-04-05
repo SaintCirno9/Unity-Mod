@@ -236,6 +236,7 @@ public class Plugin : MelonMod
             {
                 HeroHelper.TryReadNowHero(out _readedHeroData);
             }
+            OtherHelper.ChaneMaxNum();
         }
 
         // 按 R 重刷几个可复用的 Roll 场景

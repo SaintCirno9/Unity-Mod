@@ -486,7 +486,7 @@ public class AreaBuildingDataPatches
     [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetUpgradeTime))]
     public static void AreaBuildingData_GetUpgradeTime_Postfix(AreaBuildingData? __instance, ref int __result)
     {
-        if (__instance != null || Plugin.Instance.UpgradeDay1.Value) return;
+        if (__instance == null || !Plugin.Instance.UpgradeDay1.Value) return;
         __result = 1;
     }
     [HarmonyPostfix]
@@ -831,8 +831,14 @@ public class HeroDataPatch
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetUpgradeForceLvNeedSkillNum))]
     public static void HeroData_GetUpgradeForceLvNeedSkillNum_Postfix(HeroData __instance, ref int __result)
     {
-        if (Plugin.Instance.MaxSkillNum.Value > 1)
-            __result /= Plugin.Instance.MaxSkillNum.Value;
+        if (__instance == null) return;
+        var maxSkillNum = GlobalData.MaxSkillNum;
+        List<float> skillBaseNum = new() {12,10,8,6,4,2};
+        if (maxSkillNum.Count == 6)
+        {
+            var a = maxSkillNum[0] / skillBaseNum[0];
+            if (a > 1) __result /= (int)a;
+        }
     }
     
     [HarmonyPrefix]
