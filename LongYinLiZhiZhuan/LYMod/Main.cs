@@ -79,7 +79,7 @@ public class Plugin : MelonMod
     private MelonPreferences_Entry<bool> _useModifier = null!; // 使用组合键
     private MelonPreferences_Entry<KeyCode> _key1 = null!; // 第一个键
     private MelonPreferences_Entry<KeyCode> _key2 = null!; // 第二个键
-    public MelonPreferences_Entry<float> _windowScaling = null!; // 窗体缩放百分比
+    public MelonPreferences_Entry<float> WindowScaling = null!; // 窗体缩放百分比
     
     #endregion
     
@@ -124,7 +124,7 @@ public class Plugin : MelonMod
         _useModifier = _otherCategory.CreateEntry("_useModifier", true,  description: "使用组合键");
         _key1 = _otherCategory.CreateEntry("_key1", KeyCode.LeftAlt,  description: "键1");
         _key2 = _otherCategory.CreateEntry("_key2", KeyCode.E,  description: "键2");
-        _windowScaling = _otherCategory.CreateEntry("WindowScaling", 1.0f,  description: "窗体缩放百分比");
+        WindowScaling = _otherCategory.CreateEntry("WindowScaling", 1.0f,  description: "窗体缩放百分比");
         
         StudyFightRate = MainCategory.CreateEntry("studyFightRate", 1.0f,  description: "练功房学习战斗经验倍率");
         StudyUniqeRate = MainCategory.CreateEntry("studyUniqeRate", 1.0f,  description: "闭关室学习理论经验倍率");
@@ -285,7 +285,7 @@ public class Plugin : MelonMod
     
     public override void OnGUI()
     {
-        var scale = _windowScaling.Value;
+        var scale = WindowScaling.Value;
         var baseFontSize = 18;
         var scaledFontSize = (int)(baseFontSize * scale);
         
@@ -419,7 +419,7 @@ public class Plugin : MelonMod
    
     private void DrawMainWindow(int windowId)
     {
-        var scale = _windowScaling.Value;
+        var scale = WindowScaling.Value;
         var scaledWidth = (Width - 30) * scale;
         var scaledHeight = (Hight * scale) - (70 * scale);
        
@@ -480,7 +480,7 @@ public class Plugin : MelonMod
     
     private void DrawMainTab()
     {
-        var scale = _windowScaling.Value;
+        var scale = WindowScaling.Value;
         var builder = UIHelper.CreateBuilder(scale);
 
         builder.AddButtonRow("重置所有", OtherHelper.ResetAllMainConfig, 100);
@@ -633,10 +633,10 @@ public class Plugin : MelonMod
             .AddAutoSaveRow("按R键重新Roll", _breakRollFlag, "时间暂停", TimeFreezeFlag)
             .AddAutoSaveRow("自动鉴宝",AutoJianBaoFlag, "斗酒一回胜利", DrinkOneWinFlag)
             .AddAutoSave("难度经验倍率", ExpRateMultiplier)
-            .AddSlider("窗体/字体缩放", _windowScaling,0.5f, 2.0f, _otherCategory, labelWidth:100, sliderWidth:200, useFixedLayout:true)
+            .AddSlider("窗体/字体缩放", WindowScaling,0.5f, 2.0f, _otherCategory, labelWidth:100, sliderWidth:200, useFixedLayout:true)
             .AddButtonRow("重置缩放", () =>
             {
-                _windowScaling.Value = 1;
+                WindowScaling.Value = 1;
                 _otherCategory.SaveToFile();
             })
             .EndFoldout();

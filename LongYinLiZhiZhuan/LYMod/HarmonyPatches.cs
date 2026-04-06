@@ -773,7 +773,7 @@ public class HeroDataPatch
         if (gc == null) return true;
         var forceId = gc.worldData.Player()?.belongForceID ?? -1;
         if (forceId == -1) return true;
-        if (forceId != targetForce && Plugin.Instance.ForceContributionRate.Value > 1)
+        if (forceId != targetForce && Plugin.Instance.ForceContributionRate.Value > 1 && num > 0)
         {
             num *= Plugin.Instance.ForceContributionRate.Value;
         }

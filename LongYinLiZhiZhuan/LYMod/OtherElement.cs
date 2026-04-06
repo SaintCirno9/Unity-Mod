@@ -1,5 +1,4 @@
-﻿using Il2Cpp;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace LYMod;
 
@@ -9,7 +8,7 @@ public static class OtherElement
     
     public static void ForceSpeFunction()
     {
-        var scale = Plugin.Instance._windowScaling.Value;
+        var scale = Plugin.Instance.WindowScaling.Value;
         var builder = UIHelper.CreateBuilder(scale);
         builder.BeginFoldout("门派特性")
             .DrawForceSpeFunction()

@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using Il2Cpp;
-using MelonLoader;
 
 namespace LYMod;
 
@@ -19,7 +18,6 @@ public static class BattleSkip
             if (__instance != null && !skipButton.activeSelf)
             {
                 skipButton.SetActive(true);
-                MelonLogger.Msg("[BattleTest] [StartBattleButtonClicked] 显示跳过按钮");
             }
         }
     }
@@ -29,7 +27,7 @@ public static class BattleSkip
     {
         public static void Prefix(BattleController __instance)
         {
-            MelonLogger.Msg("[BattleTest] [SureSkipBattle] 跳过战斗开始");
+            Plugin.LOG.Msg("[BattleTest] [SureSkipBattle] 跳过战斗开始");
 
             var playerTeamID = __instance.GetPlayerControlTeamID();
 
@@ -39,14 +37,9 @@ public static class BattleSkip
             _storedEnemyCount = enemyCount;
             _storedEnemyTotalHp = enemyTotalHP;
 
-            MelonLogger.Msg($"[BattleTest] [SureSkipBattle] 玩家队伍ID: {playerTeamID}, 战力: {playerScore}");
-            MelonLogger.Msg($"[BattleTest] [SureSkipBattle] 敌人数量: {enemyCount}, 敌人总血量: {enemyTotalHP}");
-
-            __instance.winTeamID = playerTeamID;
-            __instance.winTeamLeftFightScore = playerScore;
-            __instance.fightCounted = true;
-            __instance.randomTrophy = true;
-
+            Plugin.LOG.Msg($"[BattleTest] [SureSkipBattle] 玩家队伍ID: {playerTeamID}, 战力: {playerScore}");
+            Plugin.LOG.Msg($"[BattleTest] [SureSkipBattle] 敌人数量: {enemyCount}, 敌人总血量: {enemyTotalHP}");
+            
             var playerUnit = __instance.playerBattleUnit;
             if (playerUnit != null)
             {
@@ -56,12 +49,6 @@ public static class BattleSkip
                 playerUnit.battleInfo.enemyKilled = _storedEnemyCount;
                 playerUnit.battleInfo.enemyKillScorePercent = _storedEnemyTotalHp;
 
-                MelonLogger.Msg(
-                    $"[BattleTest] [SureSkipBattle] 设置 playerBattleUnit.battleInfo: makeDamage={_storedEnemyTotalHp}, enemyKilled={_storedEnemyCount}");
-            }
-            else
-            {
-                MelonLogger.Warning("[BattleTest] [SureSkipBattle] playerBattleUnit 为空");
             }
         }
     }
@@ -74,7 +61,6 @@ public static class BattleSkip
         var teams = bc.teams;
         if (teams == null)
         {
-            MelonLogger.Warning("[BattleTest] teams 为空");
             return;
         }
 
@@ -100,10 +86,6 @@ public static class BattleSkip
         public static void Postfix(BattleController __instance, float enemyTotalScore, ref bool heroWin, ref float __result)
         {
             if (!Plugin.Instance.BattleSkipFlag.Value) return;
-
-            MelonLogger.Msg(
-                $"[BattleTest] [CountPlayerBattleScore] enemyTotalScore={enemyTotalScore}, heroWin={heroWin}, 原始返回值={__result}");
-            __instance.winTeamID = __instance.GetPlayerControlTeamID();
             if (heroWin) __result = 100f;
 
         }
