@@ -261,34 +261,11 @@ public class Plugin : MelonMod
         }
        
         
-        if (Input.GetKeyDown(KeyCode.F6))
-        {
-            var buildingDataBases = GameDataController.Instance.buildingDataBase;
-            foreach (var buildingDataBase in buildingDataBases)
-            {
-                LOG.Msg($"name: {buildingDataBase.name}");
-                
-                
-                // 按等级-加成
-                var a = buildingDataBase.GetBuildingSpeAddData(0);
-                // 按等级-增加效率
-                var d = buildingDataBase.GetAreaBuildingRateChange(0);
-                
-                var b = a.forceSpeAddData;
-                foreach (var c in b)
-                {
-                    LOG.Msg($"name:{buildingDataBase.name}, c.key: {c.Key},lv:0 c.value: {c.Value}");
-                }
-            }
-        }
-
-        if (Input.GetKeyDown(KeyCode.F7))
-        {
-            HeroHelper.TryReadPlayer(out var player);
-            if (player == null) return;
-            LOG.Msg($"体力：{player.maxPower}");
-           
-        }
+        // if (Input.GetKeyDown(KeyCode.F6))
+        // {
+        //    
+        // }
+        
     }
  
     
