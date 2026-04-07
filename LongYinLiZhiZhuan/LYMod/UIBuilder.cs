@@ -744,19 +744,21 @@ public readonly struct InfoItem
 // ==========================================
 public static class UIBuilderExtensions
 {
+    #region 门派特性
+
     public static HashSet<int> EnabledForceIDs = new HashSet<int>();
     private static readonly List<ForceData> AllForces = new List<ForceData>();
     private static string _searchText = "";
     private static int _selectedForceID = -1;
 
     /// <summary>
-    /// 在 UIBuilder 中绘制门派特性选择器
+    /// 在 UIBuilder 绘制门派特性选择器
     /// </summary>
     public static UIBuilder DrawForceSpeFunction(this UIBuilder builder)
     {
         builder.ExecuteOrDefer(() =>
         {
-            // --- 顶部按钮栏 ---
+            // --- 顶部按遍历 ---
             GUILayout.Space(5);
             GUILayout.BeginVertical("Box");
             GUILayout.BeginHorizontal();
@@ -820,7 +822,6 @@ public static class UIBuilderExtensions
                     GUILayout.Label(desc, GUI.skin.label);
                     GUILayout.EndVertical();
                 }
-
                 GUILayout.EndVertical();
             }
         });
@@ -828,12 +829,18 @@ public static class UIBuilderExtensions
 
         return builder;
     }
-    
-    public static void SaveForceFunctions()
+   
+    /// <summary>
+    /// 保存拥有哪些门派特性
+    /// </summary>
+    private static void SaveForceFunctions()
     {
         Plugin.Instance.ForceSpeFunctions.Value = string.Join(",", EnabledForceIDs.Select(n => n.ToString()));
         Plugin.Instance.MainCategory.SaveToFile();
     }
+    /// <summary>
+    ///   读取门派数据
+    /// </summary>
     public static void RefreshForceList()
     {
         EnabledForceIDs.Clear();
@@ -875,4 +882,178 @@ public static class UIBuilderExtensions
             }
         }
     }
+    #endregion
+
+    #region 功能：建筑效果翻倍
+    
+    public static HashSet<int> EnabledBuildingIDs = new();
+    private static readonly List<AreaBuildingDataBase> AllBuildings = new ();
+    private static string _searchText1 = "";
+    private static int _selectedBuildingIDs = -1;
+    private static string _buildingTimesInput = "";
+
+    /// <summary>
+    /// 在 UIBuilder 绘制建筑属性翻倍选择器
+    /// </summary>
+    public static UIBuilder DrawSelectBuildings(this UIBuilder builder)
+    {
+        builder.ExecuteOrDefer(() =>
+        {
+            // --- 顶部按钮栏 ---
+            GUILayout.Space(5);
+            GUILayout.BeginVertical("Box");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("刷新", GUILayout.Width(60))) RefreshForceList();
+            if (GUILayout.Button("全选", GUILayout.Width(60)))
+            {
+                for (int i = 0; i < AllBuildings.Count; i++) EnabledBuildingIDs.Add(i);
+            }
+            if (GUILayout.Button("保存", GUILayout.Width(60))) SaveSelectedBuildings();
+            if (GUILayout.Button("清空", GUILayout.Width(60))) EnabledBuildingIDs.Clear();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("建筑效果倍数：");
+            if (string.IsNullOrEmpty(_buildingTimesInput))
+            {
+                _buildingTimesInput = Convert.ToString(Plugin.Instance.BuildingSpeTimes.Value);
+            }
+            _buildingTimesInput = GUILayout.TextField(_buildingTimesInput);
+            GUILayout.EndHorizontal();
+            GUILayout.Space(10);
+            // --- 建筑列表遍历 ---
+            for (var m = 0; m < AllBuildings.Count; m++)
+            {
+                var building = AllBuildings[m];
+                if (!string.IsNullOrEmpty(_searchText) && !building.name.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue; 
+                }
+                bool enabled = EnabledBuildingIDs.Contains(m);
+                // 列表项
+                GUILayout.BeginVertical("Box");
+                GUILayout.BeginHorizontal();
+                
+                bool newEnabled = GUILayout.Toggle(enabled, "", GUILayout.Width(20));
+                if (newEnabled != enabled)
+                {
+                    if (newEnabled) EnabledBuildingIDs.Add(m);
+                    else EnabledBuildingIDs.Remove(m);
+                }
+
+                if (GUILayout.Button($"{building.name}", GUI.skin.label, GUILayout.Width(340)))
+                {
+                    _selectedBuildingIDs = _selectedBuildingIDs == m ? -1 : m; 
+                }
+
+                GUILayout.EndHorizontal();
+
+                // 详情展示
+                if (_selectedBuildingIDs == m)
+                {
+                    string desc = "<b>每月产出</b>：";
+                    for (int i = 0; i <= 10; i++)
+                    {
+                        var list = building.GetTotalChangeResource(i,1);
+                        bool hasResource = false;
+                        string levelText = $"{i}级：";
+
+                        for (int j = 0; j < list.Count; j++)
+                        {
+                            float value = list[j];
+                            if (Mathf.Approximately(value, 0))  continue;
+                            if (j >= GlobalData.ResourceName.Count) continue;
+                            
+                            string sign = value > 0 ? "+" : "";
+                            levelText += $"{GlobalData.ResourceName[j]}{sign}{value}，";
+                            hasResource = true;
+                        }
+                        // 这一级有资源才加到描述里
+                        if (hasResource)
+                        {
+                            // 去掉最后多余的 ，
+                            levelText = levelText.TrimEnd('，');
+                            desc += levelText + "；";
+                        }
+                    }
+                    // 最后去掉末尾多余的 ；
+                    if (desc.EndsWith("；")) desc = desc.TrimEnd('；');
+                    
+                    desc += "\n<b>加成</b>：";
+                    for (int i = 0; i <= 10; i++)
+                    {
+                        bool hasResource = false;
+                        string levelText = $"{i}级：";
+                        var dict =  building.GetBuildingSpeAddData(i).forceSpeAddData;
+                        if (dict == null || dict.Count == 0) break;
+                        
+                        foreach (var d in dict)
+                        {
+                            var value = d.Value < 1
+                                ? ((int)(d.Value * 100)).ToString(CultureInfo.InvariantCulture) + "%"
+                                : d.Value.ToString(CultureInfo.InvariantCulture);
+                            
+                            levelText += $"{GameDataController.Instance.forceSpeAddDataBase[d.Key].name}+{value}，";
+                            hasResource = true;
+                        }
+                        // 这一级有资源才加到描述里
+                        if (hasResource)
+                        {
+                            // 去掉最后多余的 ，
+                            levelText = levelText.TrimEnd('，');
+                            desc += levelText + "；";
+                        }
+                    }
+                    // 最后去掉末尾多余的 ；
+                    if (desc.EndsWith("；")) desc = desc.TrimEnd('；');
+                    
+                    // desc += "\n<b>增加效率</b>：";
+                    GUILayout.Label(desc, GUI.skin.label);
+                }
+                GUILayout.EndVertical();
+            }
+
+            GUILayout.EndVertical();
+        });
+
+
+        return builder;
+    }
+    
+    /// <summary>
+    /// 保存选择翻倍效果的建筑
+    /// </summary>
+    private static void SaveSelectedBuildings()
+    {
+        Plugin.Instance.SelectedBuildings.Value = string.Join(",", EnabledBuildingIDs.Select(n => n.ToString()));
+        Plugin.Instance.BuildingSpeTimes.Value = int.Parse(_buildingTimesInput);
+        Plugin.Instance.MainCategory.SaveToFile();
+        
+        Plugin.LOG.Msg($"倍数：{Plugin.Instance.BuildingSpeTimes.Value}");
+        Plugin.LOG.Msg($"选择的建筑ID：{Plugin.Instance.SelectedBuildings.Value}");
+    }
+    /// <summary>
+    /// 刷新建筑数据
+    /// </summary>
+    public static void RefreshBuildingList()
+    {
+        EnabledBuildingIDs.Clear();
+        AllBuildings.Clear();
+        // 读取所有建筑数据
+        var gdc = GameDataController.Instance;
+        if (gdc == null) return;
+        foreach (var bdb in gdc.buildingDataBase)
+        {
+            AllBuildings.Add(bdb);
+        }
+        // 读取已经选中的数据
+        if (Plugin.Instance.SelectedBuildings.Value != "")
+        {
+            EnabledBuildingIDs = new HashSet<int>(
+                Plugin.Instance.SelectedBuildings.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(int.Parse)
+            );
+        }
+    }
+    #endregion
 }

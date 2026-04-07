@@ -35,7 +35,6 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<bool> Hgbj= null!; // 好感不减
     public MelonPreferences_Entry<float> WeightRatio= null!; // 负重倍率
     public MelonPreferences_Entry<float> EquipmentWeight= null!; // 装备重量倍率
-    public MelonPreferences_Entry<int> MaxSkillNum= null!;// 武学最佳修习数量倍数
     public MelonPreferences_Entry<float> StudyFightRate= null!; // 练功房学习战斗经验倍率
     public MelonPreferences_Entry<float> StudyUniqeRate= null!; // 闭关室学习理论经验倍率
     public MelonPreferences_Entry<float> ShopLvRate= null!; // 拍卖会品质倍率
@@ -58,11 +57,12 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<float> ZhongyuanLv= null!; //鬼市商店等级
     public MelonPreferences_Entry<float> ChanDaoRate= null!; //禅宗道法修行倍率
     public MelonPreferences_Entry<string> ForceSpeFunctions= null!; // 门派特性
+    public MelonPreferences_Entry<string> SelectedBuildings= null!; // 选择翻倍的建筑id
+    public MelonPreferences_Entry<int> BuildingSpeTimes= null!; // 建筑效果倍数值
     public MelonPreferences_Entry<float> PoisonRate= null!; // 淬毒倍率
     public MelonPreferences_Entry<bool> PoisonNumReduceFlag= null!; // 淬毒值消耗开关
     public MelonPreferences_Entry<bool> TimeFreezeFlag= null!; // 时间停止
     public MelonPreferences_Entry<bool> DrinkOneWinFlag= null!; // 斗酒一轮必胜
-    public MelonPreferences_Entry<int> ExtraPopulationPerLevel= null!; // 客房每级额外人口
     public MelonPreferences_Entry<float> ExpRateMultiplier= null!; // 游戏难度经验倍率
     public MelonPreferences_Entry<bool> GoodTreasure= null!; // 珍宝品质修改当前等级全红
     public MelonPreferences_Entry<float> ForceContributionRate= null!; // 非本门派功绩倍率
@@ -94,7 +94,6 @@ public class Plugin : MelonMod
     public string MaterialAttr = "6=20;70=0.2;131=0.2;132=0.2";//材料属性
     public bool MaxAreaFlag; //是否仙霞初建存档地块最大化
     public bool MaxAreaFlag1; //是否需要城墙
-    public static HashSet<int> BuildIds = new();// 选择修改倍数的建筑 
     
     
     // GUI状态
@@ -125,7 +124,6 @@ public class Plugin : MelonMod
         _key1 = _otherCategory.CreateEntry("_key1", KeyCode.LeftAlt,  description: "键1");
         _key2 = _otherCategory.CreateEntry("_key2", KeyCode.E,  description: "键2");
         WindowScaling = _otherCategory.CreateEntry("WindowScaling", 1.0f,  description: "窗体缩放百分比");
-        
         StudyFightRate = MainCategory.CreateEntry("studyFightRate", 1.0f,  description: "练功房学习战斗经验倍率");
         StudyUniqeRate = MainCategory.CreateEntry("studyUniqeRate", 1.0f,  description: "闭关室学习理论经验倍率");
         ReadBook = MainCategory.CreateEntry("readBookRate", 1.0f,  description: "读书倍率");
@@ -133,7 +131,6 @@ public class Plugin : MelonMod
         Pzqh = MainCategory.CreateEntry("pzlRate", 1.0f,  description: "烹饪铸造炼药倍率");
         WeightRatio = MainCategory.CreateEntry("weightRatio", 1.0f,  description: "物品负重清零");
         EquipmentWeight = MainCategory.CreateEntry("equipmentWeight", 1.0f, description: "装备负重清零");
-        MaxSkillNum = MainCategory.CreateEntry("maxSkillNum", 1,  description: "武学最佳修习数量倍数");
         ShopLvRate = MainCategory.CreateEntry("shopLvRate", 1.0f,  description: "拍卖会品质倍率");
         ItemNum = MainCategory.CreateEntry("itemNum", -1,  description: "拍卖会物品数量");
         FavorTimes = MainCategory.CreateEntry("favorTimes", 1,  description: "好感倍数");
@@ -146,10 +143,11 @@ public class Plugin : MelonMod
         ZhongyuanLv = MainCategory.CreateEntry("ZhongyuanLv", 13.5f, description:"鬼市商店等级");
         ChanDaoRate = MainCategory.CreateEntry("ChanDaoRate", 1.0f, description:"禅宗道法修行倍率");
         ForceSpeFunctions = MainCategory.CreateEntry("ForceSpeFunctions", "", description:"选择的门派特性");
+        SelectedBuildings = MainCategory.CreateEntry("SelectedBuildings", "", description:"选择的翻倍建筑id");
         PoisonRate = MainCategory.CreateEntry("PoisonRate", 1.0f, description:"淬毒值倍率");
-        ExtraPopulationPerLevel = MainCategory.CreateEntry("ExtraPopulationPerLevel", 1, description: "客房每级增加的额外弟子人口数量");
         ExpRateMultiplier = MainCategory.CreateEntry("ExpRateMultiplier", 1.0f, description:"游戏难度经验倍率,最高难度非本门经验倍率1.6（+60%）,这里默认2（+100%）");
         ForceContributionRate = MainCategory.CreateEntry("ForceContributionRate", 1.0f,description:"非本门功绩倍率");
+        BuildingSpeTimes = MainCategory.CreateEntry("BuildingSpeTimes", 1,description:"建筑效果翻倍值");
         
         PoisonNumReduceFlag = MainCategory.CreateEntry("PoisonNumReduceFlag", false, description:"淬毒消耗开关");
         UpgradeDay1 = MainCategory.CreateEntry("upgrade1", false, description:"升级一天");
@@ -203,6 +201,7 @@ public class Plugin : MelonMod
         harmony.PatchAll(typeof(TimeDataPatches));
         harmony.PatchAll(typeof(TestPatches));
         harmony.PatchAll(typeof(UIPatches));
+        harmony.PatchAll(typeof(BattleSkip));
         MelonLogger.Msg("LYMod is loaded!左alt + e 打开窗体!");
         
         var allMods = MelonBase.RegisteredMelons.OfType<MelonMod>();
@@ -212,7 +211,6 @@ public class Plugin : MelonMod
             if (mod.Info.Name == "SelfHouseLover") RollHelper.IsRecruitReRoll = false;
         }
         
-        OtherHelper.ChaneMaxNum();
     }
 
     private bool IsOpenWindowTriggered()
@@ -232,11 +230,11 @@ public class Plugin : MelonMod
             _isCapturingMainWindowPointer = false;
             
             UIBuilderExtensions.RefreshForceList();
+            UIBuilderExtensions.RefreshBuildingList();
             if (_showMainWindow)
             {
                 HeroHelper.TryReadNowHero(out _readedHeroData);
             }
-            OtherHelper.ChaneMaxNum();
         }
 
         // 按 R 重刷几个可复用的 Roll 场景
@@ -263,23 +261,34 @@ public class Plugin : MelonMod
         }
        
         
-        // if (Input.GetKeyDown(KeyCode.F6))
-        // {
-        //     var buildingDataBases = GameDataController.Instance.buildingDataBase;
-        //     foreach (var buildingDataBase in buildingDataBases)
-        //     {
-        //         LOG.Msg($"name: {buildingDataBase.name}");
-        //         
-        //         int i = 0;
-        //         
-        //         var a = buildingDataBase.GetBuildingSpeAddData(i);
-        //         var b = a.forceSpeAddData;
-        //         foreach (var c in b)
-        //         {
-        //             LOG.Msg($"name:{buildingDataBase.name}, c.key: {c.Key},lv:{i} c.value: {c.Value}");
-        //         }
-        //     }
-        // }
+        if (Input.GetKeyDown(KeyCode.F6))
+        {
+            var buildingDataBases = GameDataController.Instance.buildingDataBase;
+            foreach (var buildingDataBase in buildingDataBases)
+            {
+                LOG.Msg($"name: {buildingDataBase.name}");
+                
+                
+                // 按等级-加成
+                var a = buildingDataBase.GetBuildingSpeAddData(0);
+                // 按等级-增加效率
+                var d = buildingDataBase.GetAreaBuildingRateChange(0);
+                
+                var b = a.forceSpeAddData;
+                foreach (var c in b)
+                {
+                    LOG.Msg($"name:{buildingDataBase.name}, c.key: {c.Key},lv:0 c.value: {c.Value}");
+                }
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.F7))
+        {
+            HeroHelper.TryReadPlayer(out var player);
+            if (player == null) return;
+            LOG.Msg($"体力：{player.maxPower}");
+           
+        }
     }
  
     
@@ -569,10 +578,8 @@ public class Plugin : MelonMod
             .AddAutoSaveRow("练功倍率:", StudyFightRate, "闭关倍率:",  StudyUniqeRate)
             .AddAutoSaveRow("实战倍率:", BattleChangeSkillFightRate,  "读书倍率:", ReadBook)
             .AddAutoSaveRow("突破倍率:", RedBreak, "抄书一天", CopyBookFlag)
-            .AddAutoSaveRow("获得金钱倍数",MoneyTimes, "武学修习倍数",MaxSkillNum)
+            .AddAutoSaveRow("获得金钱倍数",MoneyTimes, "莫高窟遗忘任意技能", RemoveAnySkill)
             .AddAutoSaveRow("生活经验倍率", LivingSkillExpRate, "生活潜力倍数", MaxLivingSkillExpTimes)
-            .AddAutoSave("莫高窟遗忘任意技能", RemoveAnySkill)
-            
             .AddLabelRow("突破属性修改方案1：")
             .BeginHorizontal()
             .AddButton("获取当前武学突破随机值", () =>
@@ -602,7 +609,6 @@ public class Plugin : MelonMod
             .AddAutoSaveRow("研究一天",ReasearchFlag, "禅道修行倍率:", ChanDaoRate)
             .AddAutoSaveRow("建筑资源零消耗",Cost0, "建造升级移动拆除1天:", UpgradeDay1)
             .AddAutoSaveRow("非本门功绩倍率:", ForceContributionRate,"特殊建筑上限", MaxSpeBuildingNum)
-            .AddAutoSave("客房人口倍数:", ExtraPopulationPerLevel)
             .EndFoldout();
         
         builder.BeginFoldout("交互相关").Space(10)

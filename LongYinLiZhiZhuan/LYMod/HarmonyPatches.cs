@@ -10,36 +10,6 @@ namespace LYMod;
 
 
 
-
-[HarmonyPatch(typeof(AreaBuildingData))]
-public static class AreaBuildingDataPatch
-{
-    [HarmonyPostfix]
-    [HarmonyPatch("GetBuildingSpeAddData")]
-    public static void GetBuildingSpeAddData_Postfix(AreaBuildingData __instance, ref ForceSpeAddData __result)
-    {
-        if (Plugin.Instance.ExtraPopulationPerLevel.Value == 1) return;
-        
-        if (__instance == null || __result == null) return;
-        var db = __instance.DataBase();
-        if (db == null) return;
-
-        var area = __instance.GetArea();
-        var flag = HeroHelper.TryReadPlayer(out var player);
-        if (area == null || !flag) return;
-        if (area.belongForceID != player.belongForceID) return;
-        
-        if ( db.name == "客房")
-        {
-            var a = db.GetBuildingSpeAddData(__instance.lv).forceSpeAddData;
-            foreach (var c in a)
-            {
-                __result.Set(c.Key, c.Value * Plugin.Instance.ExtraPopulationPerLevel.Value);
-            }
-        }
-    }
-}
-
 public class TimeDataPatches
 {
     [HarmonyPrefix]
@@ -461,6 +431,50 @@ public class HeroTagIconControllerPatches
 
 public class AreaBuildingDataPatches
 {
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetBuildingSpeAddData))]
+    public static void GetBuildingSpeAddData_Postfix(AreaBuildingData __instance, ref ForceSpeAddData __result)
+    {
+        if (__instance == null || Plugin.Instance.BuildingSpeTimes.Value == 1) return;
+        var db = __instance.DataBase();
+        if (db == null) return;
+        
+        var area = __instance.GetArea();
+        var flag = HeroHelper.TryReadPlayer(out var player);
+        if (area == null || !flag || area.belongForceID != player.belongForceID) return;
+
+        Plugin.LOG.Msg($"倍数：{Plugin.Instance.BuildingSpeTimes.Value}, 建筑ID:{__instance.buildingID}");
+        
+        if (UIBuilderExtensions.EnabledBuildingIDs.Contains(__instance.buildingID))
+        {
+            var dict = db.GetBuildingSpeAddData(__instance.lv).forceSpeAddData;
+            foreach (var ky in dict)
+            {
+                __result.Set(ky.Key, __result.Get(ky.Key) * Plugin.Instance.BuildingSpeTimes.Value);
+            }
+        }
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetTotalChangeResource))]
+    public static void GetTotalChangeResource_Postfix(AreaBuildingData __instance, 
+        Il2CppSystem.Collections.Generic.List<float> __result)
+    {
+        if (__instance == null || Plugin.Instance.BuildingSpeTimes.Value == 1) return;
+        if (UIBuilderExtensions.EnabledBuildingIDs.Contains(__instance.buildingID))
+        {
+            Plugin.LOG.Msg($"倍数：{Plugin.Instance.BuildingSpeTimes.Value}, 建筑ID:{__instance.buildingID}");
+            for (int i = 0; i < __result.Count; i++)
+            {
+                if (__result[i] > 0)
+                {
+                    __result[i] *= Plugin.Instance.BuildingSpeTimes.Value;
+                }
+            }
+        }
+    }
+    
     [HarmonyPrefix]
     [HarmonyPatch(typeof(GameDataController), nameof(GameDataController.GameDataIntoGame))]
     public static bool GameDataController_GameDataIntoGame_Prefix(GameDataController __instance)
@@ -732,37 +746,27 @@ public class HeroDataPatch
     #endregion
     
     
-    /**
-     * 游戏难度倍率默认最高难度1.6
-     */
+    /// <summary>
+    /// 游戏难度倍率默认最高难度1.6
+    /// </summary>
+    /// <param name="__instance"></param>
+    /// <param name="__result"></param>
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetGameDifficultyExpRate))]
     public static void Postfix(HeroData __instance, ref float __result)
     {
-        if (Mathf.Approximately(Plugin.Instance.ExpRateMultiplier.Value, 1))
-            return;
-
-        var multiplier = Plugin.Instance.ExpRateMultiplier.Value;
-        var gc = GameController.Instance;
-        if (__instance != null && gc != null)
-        {
-            var player = gc.worldData.Player();
-            var playerForceId = player?.belongForceID ?? -1;
-            if (playerForceId == -1)
-            {
-                //玩家无门派时，除了玩家所有人都修改倍率
-                if (__instance.heroID != 0)
-                    __result = multiplier;
-            }
-            else
-            {
-                //玩家有门派时，不和玩家一个门派的人物倍率修改
-                if (__instance.belongForceID != playerForceId) 
-                    __result = multiplier;
-            }
-        }
+        if (__instance == null) return;
+        if (Mathf.Approximately(Plugin.Instance.ExpRateMultiplier.Value, 1)) return;
+        __result = Plugin.Instance.ExpRateMultiplier.Value;
     }
-    //门派功绩倍率
+    /// <summary>
+    /// 门派功绩倍率
+    /// </summary>
+    /// <param name="__instance"></param>
+    /// <param name="num"></param>
+    /// <param name="showInfo"></param>
+    /// <param name="targetForce"></param>
+    /// <returns></returns>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.ChangeForceContribution))]
     public static bool HeroData_ChangeForceContribution_Prefix(HeroData __instance, ref float num, 
@@ -825,20 +829,6 @@ public class HeroDataPatch
             num *= Plugin.Instance.MoneyTimes.Value;
         }
         return true;
-    }
-    
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetUpgradeForceLvNeedSkillNum))]
-    public static void HeroData_GetUpgradeForceLvNeedSkillNum_Postfix(HeroData __instance, ref int __result)
-    {
-        if (__instance == null) return;
-        var maxSkillNum = GlobalData.MaxSkillNum;
-        List<float> skillBaseNum = new() {12,10,8,6,4,2};
-        if (maxSkillNum.Count == 6)
-        {
-            var a = maxSkillNum[0] / skillBaseNum[0];
-            if (a > 1) __result /= (int)a;
-        }
     }
     
     [HarmonyPrefix]

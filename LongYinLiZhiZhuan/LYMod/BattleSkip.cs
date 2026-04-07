@@ -15,8 +15,13 @@ public static class BattleSkip
         {
             if (!Plugin.Instance.BattleSkipFlag.Value) return;
             var skipButton = __instance.battleSkipButton;
-            if (__instance != null && !skipButton.activeSelf)
+            var rect = skipButton.GetComponent<UnityEngine.UI.Image>()?.rectTransform;
+            if (__instance != null && !skipButton.activeSelf && rect != null)
             {
+                if (rect.localScale.x == 0 || rect.localScale.y == 0)
+                {
+                    rect.localScale = new UnityEngine.Vector3(1f, 1f, 1f);
+                }
                 skipButton.SetActive(true);
             }
         }
@@ -27,18 +32,12 @@ public static class BattleSkip
     {
         public static void Prefix(BattleController __instance)
         {
-            Plugin.LOG.Msg("[BattleTest] [SureSkipBattle] 跳过战斗开始");
 
             var playerTeamID = __instance.GetPlayerControlTeamID();
-
-            var playerScore = 0f;
 
             GetEnemyInfo(__instance, playerTeamID, out var enemyCount, out var enemyTotalHP);
             _storedEnemyCount = enemyCount;
             _storedEnemyTotalHp = enemyTotalHP;
-
-            Plugin.LOG.Msg($"[BattleTest] [SureSkipBattle] 玩家队伍ID: {playerTeamID}, 战力: {playerScore}");
-            Plugin.LOG.Msg($"[BattleTest] [SureSkipBattle] 敌人数量: {enemyCount}, 敌人总血量: {enemyTotalHP}");
             
             var playerUnit = __instance.playerBattleUnit;
             if (playerUnit != null)

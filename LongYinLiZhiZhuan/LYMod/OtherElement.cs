@@ -15,7 +15,7 @@ public static class OtherElement
             .EndFoldout();
 
         builder.BeginFoldout("门派建筑效果")
-            
+            .DrawSelectBuildings()
             .EndFoldout();
     }
 

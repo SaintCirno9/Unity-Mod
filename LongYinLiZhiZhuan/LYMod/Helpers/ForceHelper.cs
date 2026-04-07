@@ -1,4 +1,6 @@
-﻿namespace LYMod.Helpers;
+﻿using Il2Cpp;
+
+namespace LYMod.Helpers;
 
 public class ForceHelper
 {
