@@ -1095,8 +1095,6 @@ public class ForceDataPatches
         
         if (worldData.gameMode == GameMode.Plot)
         {
-            if (originalText.Contains("<b>门派特性</b>")) return;
-            
             if (targetForceID == playerForceID)
             {
                 var sb = new StringBuilder();
