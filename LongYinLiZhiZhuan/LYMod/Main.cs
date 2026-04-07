@@ -102,7 +102,7 @@ public class Plugin : MelonMod
     private const int Width = 590;
     private Rect _mainWindowRect = new(50, 50, Width, Hight);
     private bool _showMainWindow;
-    private readonly string[] _tabNames = { "功能开关", "属性ID", "门派特性" };
+    private readonly string[] _tabNames = { "功能开关", "属性ID", "门派特性和建筑效果" };
     private int _selectedTab;
     private bool _isCapturingMainWindowPointer;
     private static GUIStyle _windowStyle = null!;
