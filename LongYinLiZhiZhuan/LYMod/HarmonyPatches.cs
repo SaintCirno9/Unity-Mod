@@ -443,8 +443,6 @@ public class AreaBuildingDataPatches
         var area = __instance.GetArea();
         var flag = HeroHelper.TryReadPlayer(out var player);
         if (area == null || !flag || area.belongForceID != player.belongForceID) return;
-
-        Plugin.LOG.Msg($"倍数：{Plugin.Instance.BuildingSpeTimes.Value}, 建筑ID:{__instance.buildingID}");
         
         if (UIBuilderExtensions.EnabledBuildingIDs.Contains(__instance.buildingID))
         {
@@ -464,7 +462,6 @@ public class AreaBuildingDataPatches
         if (__instance == null || Plugin.Instance.BuildingSpeTimes.Value == 1) return;
         if (UIBuilderExtensions.EnabledBuildingIDs.Contains(__instance.buildingID))
         {
-            Plugin.LOG.Msg($"倍数：{Plugin.Instance.BuildingSpeTimes.Value}, 建筑ID:{__instance.buildingID}");
             for (int i = 0; i < __result.Count; i++)
             {
                 if (__result[i] > 0)
