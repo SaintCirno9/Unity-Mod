@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using Il2Cpp;
+using UnityEngine;
 
 namespace LYMod.Helpers;
 
@@ -64,5 +65,23 @@ public static class OtherHelper
 
         return il2CPPDict;
     }
+
     
+    /// <summary>
+    /// 添加游戏内提示信息
+    /// </summary>
+    /// <param name="infoText"></param>
+    /// <param name="atlasName"></param>
+    /// <param name="infoPic"></param>
+    /// <param name="soundName"></param>
+    /// <param name="volumn"></param>
+    /// <param name="lastTime"></param>
+    /// <param name="picColor"></param>
+    public static void AddInfoTab(string infoText, string atlasName = "UIAtlas", string infoPic = null,
+        string soundName = "Woosh", float volumn = 1f, float lastTime = 5f, Color picColor = default (Color))
+    {
+        var infoController = InfoController.Instance;
+        if (infoController == null) return;
+        infoController.AddInfoTab(infoText, atlasName, infoPic, soundName, volumn, lastTime, picColor);
+    }
 }

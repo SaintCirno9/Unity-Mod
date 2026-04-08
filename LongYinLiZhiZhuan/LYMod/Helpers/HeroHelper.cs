@@ -28,6 +28,18 @@ public static class HeroHelper
         player = wd.Player();
         return player != null;
     }
+
+    /**
+     * 根据人物id获取人物信息
+     */
+    public static bool TryGetHeroByID(int id, out HeroData heroData)
+    {
+        heroData = null;
+        var gc = GameController.Instance;
+        if (gc == null) return false;
+        heroData = gc.worldData.GetHero(id);
+        return heroData != null;
+    }
     
     /**
      * 解锁所有皮肤

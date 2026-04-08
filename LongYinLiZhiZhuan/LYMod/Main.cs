@@ -73,6 +73,8 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<bool> NewGameTagNumFlag = null!; // 获得所有物品都是红品质
     public MelonPreferences_Entry<bool> AnyTagFlag = null!; // 天赋无视要求和前置
     public MelonPreferences_Entry<bool> NewGameAnyTagFlag = null!; // 新档天赋无视要求和前置
+    public MelonPreferences_Entry<bool> ExternalStorageFlag = null!; // 藏宝阁价值容量锁定1亿开关
+    public MelonPreferences_Entry<bool> BookWriteChangeFlag = null!; // 抄书/默写逻辑变更
 
     
     
@@ -177,6 +179,8 @@ public class Plugin : MelonMod
         NewGameTagNumFlag = MainCategory.CreateEntry("NewGameTagNumFlag", false,  description: "新档天赋点数999");
         AnyTagFlag = MainCategory.CreateEntry("AnyTagFlag", false,  description: "天赋无视前置要求");
         NewGameAnyTagFlag = MainCategory.CreateEntry("NewGameAnyTagFlag", false,  description: "新档天赋无视前置要求");
+        ExternalStorageFlag = MainCategory.CreateEntry("ExternalStorageFlag", false,  description: "藏宝阁价值容量锁定1亿开关");
+        BookWriteChangeFlag = MainCategory.CreateEntry("BookWriteChangeFlag", false,  description: "抄书/默写逻辑变更");
         #endregion
       
         var harmony = new HarmonyLib.Harmony("LYMod");
@@ -202,6 +206,8 @@ public class Plugin : MelonMod
         harmony.PatchAll(typeof(TestPatches));
         harmony.PatchAll(typeof(UIPatches));
         harmony.PatchAll(typeof(BattleSkip));
+        harmony.PatchAll(typeof(GameDataControllerPatches));
+        harmony.PatchAll(typeof(BookWriterDataPatches));
         MelonLogger.Msg("LYMod is loaded!左alt + e 打开窗体!");
         
         var allMods = MelonBase.RegisteredMelons.OfType<MelonMod>();
@@ -261,10 +267,34 @@ public class Plugin : MelonMod
         }
        
         
-        // if (Input.GetKeyDown(KeyCode.F6))
-        // {
-        //    
-        // }
+        if (Input.GetKeyDown(KeyCode.F6))
+        {
+            var b = GlobalData.BookRareLvName;
+            foreach (var v in b)
+            {
+                LOG.Msg($"BookRareLvName{v}");
+            }
+            var c = GlobalData.LivingSkillName;
+            foreach (var v in c)
+            {
+                LOG.Msg($"LivingSkillName{v}");
+            }
+            var d = GlobalData.FightSkillName;
+            foreach (var v in d)
+            {
+                LOG.Msg($"FightSkillName{v}");
+            }
+            var kungfuSkillLvData = new KungfuSkillLvData(1);
+            var type = kungfuSkillLvData.Type();
+            LOG.Msg($"name:{kungfuSkillLvData.Name()}, type:{type}, typeName:{GlobalData.FightSkillName[type]}");
+            var e = GlobalData.SkillLvName;
+            foreach (var v in e)
+            {
+                LOG.Msg($"SkillLvName{v}");
+            }
+            
+            
+        }
         
     }
  
@@ -557,6 +587,8 @@ public class Plugin : MelonMod
             .AddAutoSaveRow("突破倍率:", RedBreak, "抄书一天", CopyBookFlag)
             .AddAutoSaveRow("获得金钱倍数",MoneyTimes, "莫高窟遗忘任意技能", RemoveAnySkill)
             .AddAutoSaveRow("生活经验倍率", LivingSkillExpRate, "生活潜力倍数", MaxLivingSkillExpTimes)
+            // .AddAutoSave("抄书/默写逻辑变更", BookWriteChangeFlag)
+            .Space(10)
             .AddLabelRow("突破属性修改方案1：")
             .BeginHorizontal()
             .AddButton("获取当前武学突破随机值", () =>
@@ -615,7 +647,7 @@ public class Plugin : MelonMod
             .AddAutoSaveRow("探险耐力锁定", Explore, "跳过战斗", BattleSkipFlag)
             .AddAutoSaveRow("按R键重新Roll", _breakRollFlag, "时间暂停", TimeFreezeFlag)
             .AddAutoSaveRow("自动鉴宝",AutoJianBaoFlag, "斗酒一回胜利", DrinkOneWinFlag)
-            .AddAutoSave("难度经验倍率", ExpRateMultiplier)
+            .AddAutoSaveRow("难度经验倍率", ExpRateMultiplier, "藏宝阁价值容量1亿", ExternalStorageFlag)
             .AddSlider("窗体/字体缩放", WindowScaling,0.5f, 2.0f, _otherCategory, labelWidth:100, sliderWidth:200, useFixedLayout:true)
             .AddButtonRow("重置缩放", () =>
             {
