@@ -6,17 +6,6 @@ namespace LYMod.Patches;
 [HarmonyPatch]
 public class TestPatches
 {
-    [HarmonyPrefix]
-    [HarmonyPatch(typeof(DrinkUIController), nameof(DrinkUIController.NextButtonClicked))]
-    public static void DrinkUIController_NextButtonClicked_Prefix(DrinkUIController __instance)
-    {
-        if (__instance == null || !Plugin.Instance.DrinkOneWinFlag.Value) return;
-        __instance.enemyLose = true;
-        __instance.playerLose = false;
-    }
-
-  
-
     private static readonly int[] MaximizedLayout =
     {
         -1, -1, -1, -1, -1, -1, -1, -2, -1, -1, -1, -1, -1, -1, -1,

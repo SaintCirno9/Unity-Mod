@@ -7,7 +7,49 @@ using LYMod.Helpers;
 
 namespace LYMod;
 
+public class DrinkUIControllerPatches
+{
+    /// <summary>
+    ///  喝酒一回合胜利
+    /// </summary>
+    /// <param name="__instance"></param>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DrinkUIController), nameof(DrinkUIController.NextButtonClicked))]
+    public static void DrinkUIController_NextButtonClicked_Prefix(DrinkUIController __instance)
+    {
+        if (__instance == null || !Plugin.Instance.DrinkOneWinFlag.Value) return;
+        __instance.enemyLose = true;
+        __instance.playerLose = false;
+    }
+    /// <summary>
+    /// 喝酒自动倒十成
+    /// </summary>
+    /// <param name="__instance"></param>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(DrinkUIController), nameof(DrinkUIController.FixedUpdate))]
+    public static void DrinkUIController_FixedUpdate_Postfix(DrinkUIController __instance)
+    {
+        __instance.SetEnemyFillAmount(1);
+    }
 
+}
+
+/// <summary>
+/// 轻功训练不受击
+/// </summary>
+public class StudyDodgePlayerPatches
+{
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(StudyDodgePlayer), nameof(StudyDodgePlayer.OnHit))]
+    public static bool StudyDodgePlayer_OnHit_Prefix(StudyDodgePlayer __instance)
+    {
+        return !Plugin.Instance.DodgeHitFlag.Value;
+    }
+}
+
+/// <summary>
+/// 藏宝阁容量
+/// </summary>
 public class GameDataControllerPatches
 {
     [HarmonyPostfix]
@@ -117,200 +159,148 @@ public class MeditationDataPatches
 
 public class BookWriterDataPatches
 {
-    private const int TAG_LIAN_WU = 220;
-    private const int TAG_WU_CHI = 221;
-    private const int TAG_WU_XUE_TIAN_CAI = 222;
-    private const int TAG_YI_CHENG_BAI_JIA = 81;
-    private const int TAG_WU_XUE_ZONG_SHI = 82;
-    private const int TAG_DENG_FENG_ZAO_JI = 83;
 
-    private static float GetTalentBonus(HeroData hero)
+    private static readonly string[] RareColors = { "#00B400", "#78BE00", "#0080FF", "#9A7CFF", "#FF8C06", "#FF0000" };
+
+    private static string ColorizeText(string text, int lv)
     {
-        float bonus = 0f;
-        
-        if (hero.HaveTag(TAG_WU_XUE_TIAN_CAI))
-        {
-            bonus += 0.3f;
-        }
-        else if (hero.HaveTag(TAG_WU_CHI))
-        {
-            bonus += 0.2f;
-        }
-        else if (hero.HaveTag(TAG_LIAN_WU))
-        {
-            bonus += 0.1f;
-        }
-        
-        if (hero.HaveTag(TAG_YI_CHENG_BAI_JIA))
-        {
-            bonus += 0.1f;
-        }
-        if (hero.HaveTag(TAG_WU_XUE_ZONG_SHI))
-        {
-            bonus += 0.1f;
-        }
-        if (hero.HaveTag(TAG_DENG_FENG_ZAO_JI))
-        {
-            bonus += 0.1f;
-        }
-        
-        return bonus;
+        string color = RareColors[lv];
+        return $"<color={color}>{text}</color>";
     }
-
-    private static int GetMaxAllowedLvBySkillRare(int skillRareLv)
+    /// <summary>
+    /// 抄书计算
+    /// </summary>
+    /// <param name="hero"></param>
+    /// <param name="originalBook"></param>
+    /// <returns></returns>
+    private static int DetermineCopyResult(HeroData hero, ItemData originalBook)
     {
-        return skillRareLv switch
+        // 技能类别
+        var skillType = originalBook.bookData.DataBase().type;
+        // 技能稀有度
+        var skillLv = originalBook.bookData.DataBase().rareLv;
+        // 书完整度
+        var bookRareLv = originalBook.rareLv;
+        
+        // 智力 学识 抄书人对应技能值
+        var zhiLi = hero.totalAttri[2];
+        var xueShi = hero.totalLivingSkill[2];
+        var fightSkill = hero.totalFightSkill[skillType];
+
+        var text = ColorizeText(GlobalData.AttriRatioString[skillType + 1], skillLv);
+        var needValue = GlobalData.AttriLvNum[skillLv+1];
+        // 检测属性是否达标
+        if (zhiLi < needValue)
         {
-            0 => 5,
-            1 => 4,
-            2 => 3,
-            3 => 2,
-            4 => 1,
-            5 => 0,
-            _ => 5
+            OtherHelper.AddInfoTab($"智力属性未达到{text}，只能抄到残本");
+            return 0;
+        }
+        // 生活属性最大按120
+        if (xueShi < (skillLv == 5 ? 120 : needValue))
+        {
+            OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本");
+            return 0;
+        }
+        if (fightSkill < needValue)
+        {
+            OtherHelper.AddInfoTab($"{GlobalData.FightSkillName[skillType]}属性未达到{text}，只能抄到残本");
+            return 0;
+        }
+        // 天赋
+        var tagValue1 = hero.HaveTag(222) ? 5 : 0;
+        var tagValue2 = hero.HaveTag(81) ? 7 : 0;
+        var tagValue3 = hero.HaveTag(82) ? 8 : 0;
+        var tagValue4 = hero.HaveTag(83) ? 10 : 0;
+        var tagScore = tagValue1 + tagValue2 + tagValue3 + tagValue4;
+
+        
+        // ====================== 权重计算（核心）======================
+        var wBook = Mathf.Min(bookRareLv, 4) * 12f;    // 原本质量（影响最大）
+        var wZhiLi = Mathf.Clamp(zhiLi, 0, 150) * 0.4f;     // 智力权重
+        var wXueShi = Mathf.Clamp(xueShi, 0, 120) * 0.5f;   // 学识权重（比智力高）
+        var wFight = Mathf.Clamp(fightSkill, 0, 150) * 0.6f;// 对应技能（最重要）
+        var wTag = Mathf.Clamp(tagScore, 0, 30) * 1.0f;    // 天赋权重
+        
+        // 最终总分（0~200区间）
+        var totalScore = wBook + wZhiLi + wXueShi + wFight + wTag;
+
+        return totalScore switch
+        {
+            // ====================== 分数 → 等级 ======================
+            >= 180 => 4,// 珍本
+            >= 140 => 3,// 古本
+            >= 100 => 2,// 善本
+            >= 60 => 1,// 仿本 
+            _ => 0 // 残本
         };
     }
 
-    private static int GetCompleteLvByScore(float score, int maxAllowedLv, int originalRareLv)
-    {
-        int[] thresholds = { 0, 60, 120, 180, 240, 300 };
-        
-        int targetLv = 0;
-        for (int i = thresholds.Length - 1; i >= 0; i--)
-        {
-            if (score >= thresholds[i])
-            {
-                targetLv = i;
-                break;
-            }
-        }
-        
-        targetLv = Math.Min(targetLv, maxAllowedLv);
-        targetLv = Math.Min(targetLv, originalRareLv);
-        targetLv = Math.Min(targetLv, 4);
-        
-        return targetLv;
-    }
-
-    private static float CalculateCopyScore(HeroData hero, int skillType, int skillRareLv)
-    {
-        float zhiLi = hero.baseAttri[2];
-        float xueShi = hero.totalLivingSkill[2];
-        float fightSkill = hero.baseFightSkill[skillType];
-        
-        float baseScore = zhiLi + xueShi + fightSkill;
-        
-        float talentBonus = GetTalentBonus(hero);
-        float bonusScore = baseScore * talentBonus;
-        
-        float totalScore = baseScore + bonusScore;
-        
-        return totalScore;
-    }
-
-    private static int GetSkillTypeFromBook(ItemData book)
-    {
-        if (book?.bookData?.skillID == null) return 0;
-        var kungfuSkillLvData = new KungfuSkillLvData(book.bookData.skillID);
-        return kungfuSkillLvData.Type();
-    }
-
-    private static int GetSkillRareLvFromBook(ItemData book)
-    {
-        if (book?.bookData?.skillID == null) return 0;
-        var kungfuSkillLvData = new KungfuSkillLvData(book.bookData.skillID);
-        var skillData = kungfuSkillLvData.DataBase();
-        return skillData?.rareLv ?? 0;
-    }
-
-    private static readonly string[] RareLvNames = { "残本", "仿本", "善本", "古本", "珍本", "完本" };
-
-    private static int DetermineCopyResult(HeroData hero, ItemData originalBook)
-    {
-        int skillType = GetSkillTypeFromBook(originalBook);
-        int skillRareLv = GetSkillRareLvFromBook(originalBook);
-        int originalRareLv = originalBook.rareLv;
-        
-        float score = CalculateCopyScore(hero, skillType, skillRareLv);
-        
-        int maxAllowedLv = GetMaxAllowedLvBySkillRare(skillRareLv);
-        
-        int resultLv = GetCompleteLvByScore(score, maxAllowedLv, originalRareLv);
-        
-        Plugin.LOG.Msg($"[梯度抄书] 技能类型:{skillType}, 技能稀有度:{skillRareLv}, 原书完整度:{originalRareLv}, 得分:{score}, 最大允许:{maxAllowedLv}, 结果:{resultLv}");
-        
-        if (resultLv < originalRareLv)
-        {
-            string reason = "";
-            if (resultLv < maxAllowedLv)
-            {
-                reason = $"属性不足(得分:{score:F0}/需要:{(resultLv + 1) * 60})";
-            }
-            else
-            {
-                reason = $"技能稀有度限制(最大:{RareLvNames[maxAllowedLv]})";
-            }
-            OtherHelper.AddInfoTab($"<color=#FF8C06>[梯度抄书]</color> 完整度降低: {RareLvNames[originalRareLv]} → {RareLvNames[resultLv]}\n原因: {reason}", "UIAtlas", "书本", "Fail", 1f, 5f);
-        }
-        
-        return resultLv;
-    }
-
+    /// <summary>
+    /// 默写计算
+    /// </summary>
+    /// <param name="hero"></param>
+    /// <param name="ksld"></param>
+    /// <returns></returns>
     private static int DetermineMemoryResult(HeroData hero, KungfuSkillLvData ksld)
     {
-        var learnedSkill = hero.FindSkill(ksld.skillID);
-        int skillLv = learnedSkill?.lv ?? 0;
-        int originalRareLv = ksld.DataBase().rareLv;
-        int skillType = ksld.Type();
+        // 技能类别
+        var skillType = ksld.Type();
+        // 技能稀有度
+        var skillLv = ksld.DataBase().rareLv;
+        // 智力 学识 抄书人对应技能值
+        var zhiLi = hero.totalAttri[2];
+        var xueShi = hero.totalLivingSkill[2];
+        var fightSkill = hero.totalFightSkill[skillType];
+        // 技能修炼到的等级
+        var lv = ksld.lv;
         
-        float zhiLi = hero.baseAttri[2];
-        float xueShi = hero.totalLivingSkill[2];
-        float fightSkill = hero.totalFightSkill[skillType];
-        
-        float baseScore = zhiLi + xueShi + fightSkill;
-        float talentBonus = GetTalentBonus(hero);
-        float bonusScore = baseScore * talentBonus;
-        float totalScore = baseScore + bonusScore + skillLv;
-        
-        int[] thresholds = { 0, 60, 120, 180, 240, 300 };
-        int targetLv = 0;
-        for (int i = thresholds.Length - 1; i >= 0; i--)
+        var text = ColorizeText(GlobalData.AttriRatioString[skillType], skillLv);
+        var needValue = GlobalData.AttriLvNum[skillLv+1];
+        // 检测属性是否达标
+        if (zhiLi < needValue)
         {
-            if (totalScore >= thresholds[i])
-            {
-                targetLv = i;
-                break;
-            }
+            OtherHelper.AddInfoTab($"智力属性未达到{text}，只能抄到残本");
+            return 0;
+        }
+        // 生活属性最大按120算
+        if (xueShi < (skillLv == 5 ? 120 : needValue))
+        {
+            if (skillLv == 5) text = "<color=red>120</color>";
+            OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本");
+            return 0;
+        }
+        if (fightSkill < needValue)
+        {
+            OtherHelper.AddInfoTab($"{GlobalData.FightSkillName[skillType]}属性未达到{text}，只能抄到残本");
+            return 0;
         }
         
-        targetLv = Math.Min(targetLv, originalRareLv);
-        
-        if (skillLv >= 10)
+        // 天赋分数
+        var tagValue1 = hero.HaveTag(222) ? 5 : 0;
+        var tagValue2 = hero.HaveTag(81) ? 7 : 0;
+        var tagValue3 = hero.HaveTag(82) ? 8 : 0;
+        var tagValue4 = hero.HaveTag(83) ? 10 : 0;
+        var tagScore = tagValue1 + tagValue2 + tagValue3 + tagValue4;
+
+        // ========== 权重计算（核心） ==========
+        var wLv = Mathf.Clamp(lv, 0, 10) * 8f;          // 武学等级（核心）
+        var wFight = Mathf.Clamp(fightSkill, 0, 150) * 0.7f; // 战斗技能（关键）
+        var wXueShi = Mathf.Clamp(xueShi, 0, 120) * 0.6f;   // 学识（重要）
+        var wZhiLi = Mathf.Clamp(zhiLi, 0, 150) * 0.4f;     // 智力（辅助）
+        var wTag = Mathf.Clamp(tagScore, 0, 30) * 1.2f;     // 天赋（增幅）
+
+        // 最终得分
+        var total = wLv + wFight + wXueShi + wZhiLi + wTag;
+
+        return total switch
         {
-            targetLv = Math.Min(targetLv, 5);
-        }
-        else
-        {
-            targetLv = Math.Min(targetLv, 4);
-        }
-        
-        Plugin.LOG.Msg($"[梯度默写] 技能等级:{skillLv}, 技能类型:{skillType}, 得分:{totalScore}, 原书完整度:{originalRareLv}, 结果:{targetLv}");
-        
-        if (targetLv < originalRareLv)
-        {
-            string reason = "";
-            if (skillLv < 10 && targetLv >= 4)
-            {
-                reason = $"技能等级不足(当前:{skillLv}/需要:10级才能出完本)";
-            }
-            else
-            {
-                reason = $"属性不足(得分:{totalScore:F0}/需要:{(targetLv + 1) * 60})";
-            }
-            OtherHelper.AddInfoTab($"<color=#9A7CFF>[梯度默写]</color> 完整度降低: {RareLvNames[originalRareLv]} → {RareLvNames[targetLv]}\n原因: {reason}", "UIAtlas", "书本", "Fail", 1f, 5f);
-        }
-        
-        return targetLv;
+            // ========== 分数 → 完整度等级 ==========
+            >= 190 => 4, // 珍本
+            >= 150 => 3, // 古本
+            >= 110 => 2, // 善本
+            >= 70 => 1, // 仿本
+            _ => 0
+        };
     }
     
     [HarmonyPostfix]
@@ -333,6 +323,7 @@ public class BookWriterDataPatches
             case BookWriterType.Memory:
             {
                 var targetSkillData = __instance.targetSkillData;
+                if (targetSkillData == null) return;
                 __result.rareLv = DetermineMemoryResult(heroData, targetSkillData);
                 break;
             }
@@ -345,15 +336,8 @@ public class BookWriterDataPatches
 
 public class ChooseControllerPatches
 {
-    private static readonly string[] RareColors = { "#00B400", "#78BE00", "#0080FF", "#9A7CFF", "#FF8C06", "#FF0000" };
-    private static HeroData? targetHero;
-    private static string ColorizeSkillName(string skillName, int rareLv)
-    {
-        if (rareLv < 0) rareLv = 0;
-        if (rareLv > 5) rareLv = 5;
-        var color = RareColors[rareLv];
-        return $"<color={color}>{skillName}</color>";
-    }
+    private static HeroData targetHero;
+    
     // 金龙生刷新购买情报
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroIconController), nameof(HeroIconController.OnClick))]
@@ -386,8 +370,10 @@ public class ChooseControllerPatches
     }
 
     #region 任意传授
+    
     // 临时存储交互英雄身份等级
-    private static int tempForceLv = -1;
+    private static int _tempForceLv = -1;
+    private static int _tempHeroId = -1;
     /// <summary>
     /// 拦截传授技能选择，绕过稀有度限制直接传授给NPC
     /// </summary>
@@ -395,12 +381,14 @@ public class ChooseControllerPatches
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.TeachNewSkillToNPCChoosen))]
     public static bool PlotController_TeachNewSkillToNPCChoosen_Prefix(PlotController __instance)
     {
+        
         if (__instance != null && Plugin.Instance.TeachAnyNewSkill.Value)
         {
             var targetHero = __instance.targetInteractHero;
             
             if (targetHero == null) return true;
-            
+            targetHero.heroForceLv = _tempForceLv;
+            _tempForceLv = -1;
             var chooseController = ChooseController.Instance;
             if (chooseController == null) return true;
             
@@ -419,19 +407,9 @@ public class ChooseControllerPatches
             if (npcSkills == null) return false;
             
             var newSkill = new KungfuSkillLvData(selectedSkill.skillID);
-            npcSkills.Add(newSkill);
+            targetHero.GetSkill(newSkill, true, true);
+            targetHero.ChangeFavor(20, true, successSound:true);
             
-            var infoController = InfoController.Instance;
-            if (infoController != null)
-            {
-                string coloredName = ColorizeSkillName(newSkill.Name(false), newSkill.DataBase()?.rareLv ?? 0);
-                string infoText = $"{targetHero.heroName}学会了{coloredName}";
-                infoController.AddInfoTab(infoText,"IconAtlas",newSkill.GetSkillIcon(),"OpenBook");
-                string favorText = $"{targetHero.heroName}对你的<color=#00B400>好感+20</color>(200%)";
-                infoController.AddInfoTab(favorText,"UIAtlas","友善度","Success",1,5f,
-                    new Color(0f, 0.8f, 0f, 1f));
-            }
-
             if (Plugin.Instance.TeachNewSkillToNpc.Value)
             {
                 var skill = targetHero.FindSkill(newSkill.skillID);
@@ -440,8 +418,6 @@ public class ChooseControllerPatches
                     targetHero.UpgradeSkill(skill);
                 }
             }
-            targetHero.heroForceLv = tempForceLv;
-            tempForceLv = -1;
             return false;
         }
 
@@ -452,12 +428,24 @@ public class ChooseControllerPatches
     public static void TeachNewSkillToNPC_Prefix(PlotController __instance)
     {
         if (__instance == null || !Plugin.Instance.TeachAnyNewSkill.Value) return;
-        var targetHero = __instance.targetInteractHero;
-        if (targetHero == null) return;
-        tempForceLv = targetHero.heroForceLv;
-        targetHero.heroForceLv = 5;
+        var targetInteractHero = __instance.targetInteractHero;
+        if (targetInteractHero == null) return;
+        targetHero = targetInteractHero;
+        _tempForceLv = targetInteractHero.heroForceLv;
+        _tempHeroId = targetInteractHero.heroID;
+        targetInteractHero.heroForceLv = 5;
     }
 
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ChooseController), nameof(ChooseController.UnshowChoosePanel))]
+    public static void ChooseController_UnshowChoosePanel_Postfix(ChooseController __instance)
+    {
+        var flag = HeroHelper.TryGetHeroByID(_tempHeroId, out var hero);
+        if (__instance == null || !flag) return;
+        _tempHeroId = -1;
+        hero.heroForceLv = _tempForceLv;
+    }
+    
     /// <summary>
     /// 在技能选择面板显示后，添加被过滤掉技能
     /// </summary>
@@ -561,7 +549,7 @@ public class ChooseControllerPatches
             
             foreach (var skill in player.kungfuSkills)
             {
-                if (skill == null || existingSkillIds.Contains(skill.skillID)) continue;
+                if (skill == null || existingSkillIds.Contains(skill.skillID) || skill.DataBase().rareLv < 5) continue;
                 if (npcExistingSkillIds.Contains(skill.skillID)) continue;
             
                 var skillData = skill.DataBase();
@@ -771,12 +759,11 @@ public class AreaBuildingDataPatches
         __result = 1;
     }
     [HarmonyPostfix]
-    [HarmonyPatch(typeof(AreaBuildController), nameof(AreaBuildController.BuildModeButtonClicked))]
-    public static void AreaBuildController_BuildModeButtonClicked_Postfix(
-        AreaBuildController __instance)
+    [HarmonyPatch(typeof(AreaBuildController), nameof(AreaBuildController.GetMaxSpeBuildingNum))]
+    public static void AreaBuildController_GetMaxSpeBuildingNum_Postfix(AreaBuildController __instance, ref int __result)
     {
-        if (__instance == null || Plugin.Instance.MaxSpeBuildingNum.Value == 5) return;
-        AreaBuildController.MaxSpeBuildingNum = Plugin.Instance.MaxSpeBuildingNum.Value;
+       if (__instance == null || Plugin.Instance.MaxSpeBuildingNum.Value == 5) return;
+        __result = Plugin.Instance.MaxSpeBuildingNum.Value;
     }
 }
 // 指定突破加的什么属性
@@ -1008,9 +995,21 @@ public class HeroDataPatch
     [HarmonyPatch(typeof(HeroData), nameof(HeroData.GetGameDifficultyExpRate))]
     public static void Postfix(HeroData __instance, ref float __result)
     {
-        if (__instance == null) return;
         if (Mathf.Approximately(Plugin.Instance.ExpRateMultiplier.Value, 1)) return;
-        __result = Plugin.Instance.ExpRateMultiplier.Value;
+        var flag = HeroHelper.TryReadPlayer(out var player);
+
+        if (__instance == null || !flag) return;
+        
+        var playerForceId = player.belongForceID;
+        //玩家无门派时，除了玩家所有人都修改倍率
+        if (playerForceId == -1)
+        {
+            if (__instance.heroID != 0) __result = Plugin.Instance.ExpRateMultiplier.Value;
+        }
+        else//玩家有门派时，不和玩家一个门派的人物倍率修改
+        {
+            if (__instance.belongForceID != playerForceId) __result = Plugin.Instance.ExpRateMultiplier.Value;
+        }
     }
     /// <summary>
     /// 门派功绩倍率

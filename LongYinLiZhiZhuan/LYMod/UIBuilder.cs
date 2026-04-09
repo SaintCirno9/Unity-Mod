@@ -888,7 +888,6 @@ public static class UIBuilderExtensions
     
     public static HashSet<int> EnabledBuildingIDs = new();
     private static readonly List<AreaBuildingDataBase> AllBuildings = new ();
-    private static string _searchText1 = "";
     private static int _selectedBuildingIDs = -1;
     private static string _buildingTimesInput = "";
 
@@ -1015,8 +1014,6 @@ public static class UIBuilderExtensions
 
             GUILayout.EndVertical();
         });
-
-
         return builder;
     }
     

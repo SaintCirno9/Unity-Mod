@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using Il2Cpp;
+﻿using Il2Cpp;
 using UnityEngine;
 
 namespace LYMod.Helpers;
