@@ -198,6 +198,7 @@ public class BookWriterDataPatches
         // 生活属性最大按120
         if (xueShi < (skillLv == 5 ? 120 : needValue))
         {
+            if (skillLv == 5) text = "<color=#FF0000>120</color>";
             OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本");
             return 0;
         }
