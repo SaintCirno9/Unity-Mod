@@ -379,8 +379,6 @@ public class BookWriterDataPatches
 
 public class ChooseControllerPatches
 {
-    private static HeroData? targetHero;
-    
     // 金龙生刷新购买情报
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HeroIconController), nameof(HeroIconController.OnClick))]
@@ -392,7 +390,6 @@ public class ChooseControllerPatches
             if (hero != null)
             {
                 GameController.Instance.worldData.monthBuyAreaInfoTime = 0;
-                targetHero = hero;
             }
         }
     }
@@ -413,110 +410,75 @@ public class ChooseControllerPatches
     }
 
     #region 任意传授
-    
-    // 临时存储交互英雄门派等级（用于任意传授时临时提升NPC门派等级）
-    // _forceLvModified 标记门派等级是否已被临时修改，防止重复恢复或错误恢复
-    private static int _tempForceLv = -1;
-    private static int _tempHeroId = -1;
-    private static bool _forceLvModified = false;
-    
-    
+
     /// <summary>
-    /// 拦截传授技能选择，绕过稀有度限制直接传授给NPC
+    /// 从当前技能选择面板读取玩家刚点中的武功。
+    /// </summary>
+    private static bool TryGetSelectedSkill(out KungfuSkillLvData selectedSkill)
+    {
+        selectedSkill = null!;
+
+        var chooseController = ChooseController.Instance;
+        if (chooseController == null) return false;
+
+        var chooseResult = chooseController.chooseResult;
+        if (chooseResult == null) return false;
+
+        var skillIcon = chooseResult.GetComponent<SkillIconController>();
+        if (skillIcon?.skillLvData == null) return false;
+
+        selectedSkill = skillIcon.skillLvData;
+        return true;
+    }
+
+    /// <summary>
+    /// 只在原版会拦住的“额外技能”上接管点击，并直接调用原版 Sure。
+    /// </summary>
+    private static bool HandleTeachNewSkillChoosen(PlotController plotController, bool forceTeach)
+    {
+        if (plotController == null || !Plugin.Instance.TeachAnyNewSkill.Value) return true;
+
+        var targetInteractHero = plotController.targetInteractHero;
+        if (targetInteractHero == null) return true;
+
+        if (!TryGetSelectedSkill(out var selectedSkill)) return true;
+
+        var skillData = selectedSkill.DataBase();
+        if (skillData == null) return true;
+
+        // 原版允许的技能继续交给游戏自己处理。
+        if (targetInteractHero.FindSkill(selectedSkill.skillID) != null) return true;
+        if (skillData.rareLv != 5 && skillData.rareLv <= targetInteractHero.heroForceLv) return true;
+
+        ChooseController.Instance?.UnshowChoosePanel();
+        var skillIdParam = selectedSkill.skillID.ToString();
+        if (forceTeach)
+            plotController.ForceTeachNewSkillToNPCSure(skillIdParam);
+        else
+            plotController.TeachNewSkillToNPCSure(skillIdParam);
+
+        return false;
+    }
+
+    /// <summary>
+    /// 仅对面板补出来的额外技能接管点击
     /// </summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.TeachNewSkillToNPCChoosen))]
     public static bool PlotController_TeachNewSkillToNPCChoosen_Prefix(PlotController __instance)
     {
-        
-        if (__instance != null && Plugin.Instance.TeachAnyNewSkill.Value)
-        {
-            var instanceTargetInteractHero = __instance.targetInteractHero;
-            
-            if (instanceTargetInteractHero == null) return true;
-            
-            // 恢复NPC门派等级（在Choosen中恢复，而不是在UnshowChoosePanel中）
-            RestoreForceLv(instanceTargetInteractHero);
-            
-            var chooseController = ChooseController.Instance;
-            if (chooseController == null) return true;
-            
-            var chooseResult = chooseController.chooseResult;
-            if (chooseResult == null) return true;
-            
-            var skillIcon = chooseResult.GetComponent<SkillIconController>();
-            if (skillIcon == null) return true;
-            
-            var selectedSkill = skillIcon.skillLvData;
-            if (selectedSkill == null) return true;
-            
-            if (instanceTargetInteractHero.FindSkill(selectedSkill.skillID) != null) return false;
-            
-            var npcSkills = instanceTargetInteractHero.kungfuSkills;
-            if (npcSkills == null) return false;
-            
-            var newSkill = new KungfuSkillLvData(selectedSkill.skillID);
-            instanceTargetInteractHero.GetSkill(newSkill, true, true);
-            __instance.ChangeTargetInteractHeroFavor("20");
-            
-            if (Plugin.Instance.TeachNewSkillToNpc.Value)
-            {
-                var skill = instanceTargetInteractHero.FindSkill(newSkill.skillID);
-                for (int i = 0; i < 10; i++)
-                {
-                    instanceTargetInteractHero.UpgradeSkill(skill);
-                }
-            }
-            __instance.HideInteractUI();
-            return false;
-        }
-
-        return true;
+        return HandleTeachNewSkillChoosen(__instance, false);
     }
+
     [HarmonyPrefix]
-    [HarmonyPatch(typeof(PlotController), nameof(PlotController.TeachNewSkillToNPC))]
-    public static void TeachNewSkillToNPC_Prefix(PlotController __instance)
+    [HarmonyPatch(typeof(PlotController), nameof(PlotController.ForceTeachNewSkillToNPCChoosen))]
+    public static bool PlotController_ForceTeachNewSkillToNPCChoosen_Prefix(PlotController __instance)
     {
-        if (__instance == null || !Plugin.Instance.TeachAnyNewSkill.Value) return;
-        var targetInteractHero = __instance.targetInteractHero;
-        if (targetInteractHero == null) return;
-        targetHero = targetInteractHero;
-        _tempForceLv = targetInteractHero.heroForceLv;
-        _tempHeroId = targetInteractHero.heroID;
-        _forceLvModified = true;
-        targetInteractHero.heroForceLv = 5;
-    }
-
-    /// <summary>
-    /// 恢复被临时修改的门派等级，并重置状态标记
-    /// </summary>
-    private static void RestoreForceLv(HeroData hero)
-    {
-        if (!_forceLvModified) return;
-        if (hero != null && _tempForceLv >= 0)
-        {
-            hero.heroForceLv = _tempForceLv;
-        }
-        _forceLvModified = false;
-        _tempForceLv = -1;
-        _tempHeroId = -1;
-    }
-
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(ChooseController), nameof(ChooseController.UnshowChoosePanel))]
-    public static void ChooseController_UnshowChoosePanel_Postfix(ChooseController __instance)
-    {
-        // 只有在门派等级确实被修改过时才恢复
-        // 这处理了用户取消选择面板的情况（不经过Choosen）
-        if (!_forceLvModified) return;
-        
-        var flag = HeroHelper.TryGetHeroByID(_tempHeroId, out var hero);
-        if (__instance == null || !flag) return;
-        RestoreForceLv(hero);
+        return HandleTeachNewSkillChoosen(__instance, true);
     }
     
     /// <summary>
-    /// 在技能选择面板显示后，添加被过滤掉技能
+    /// 只补技能选择面板，让原版没有列出的武功也能出现在列表里。
     /// </summary>
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ChooseController), nameof(ChooseController.ShowChoosePanel),
@@ -581,6 +543,8 @@ public class ChooseControllerPatches
             Plugin.LOG.Msg(_filterType);
             var player = GameDataController.Instance?.gameSaveData?.WorldData?.Player();
             if (player == null || player.kungfuSkills == null) return;
+            // 优先使用当前选择流程传入的目标，避免静态缓存串到别的 NPC。
+            var currentTargetHero = targetFavorHero ?? PlotController.Instance?.targetInteractHero;
             
             var content = __instance.choosePanel?.transform?.Find("ChoosePanelRoot/ChooseItemList/Viewport/Content");
             if (content == null) return;
@@ -608,19 +572,9 @@ public class ChooseControllerPatches
             
             // 使用targetHero获取NPC已有技能列表，但需要做null检查和IL2CPP对象有效性检查
             var npcExistingSkillIds = new System.Collections.Generic.HashSet<int>();
-            var npcHero = targetHero;
-            // 如果targetHero为null或已被回收，尝试从PlotController获取当前交互英雄
-            if (npcHero == null)
+            if (currentTargetHero is { kungfuSkills: not null })
             {
-                var plotController = PlotController.Instance;
-                if (plotController != null)
-                {
-                    npcHero = plotController.targetInteractHero;
-                }
-            }
-            if (npcHero is { kungfuSkills: not null })
-            {
-                foreach (var skill in npcHero.kungfuSkills)
+                foreach (var skill in currentTargetHero.kungfuSkills)
                 {
                     if (skill != null)
                     {
@@ -631,7 +585,8 @@ public class ChooseControllerPatches
             
             foreach (var skill in player.kungfuSkills)
             {
-                if (skill == null || existingSkillIds.Contains(skill.skillID) || skill.DataBase().rareLv < 5) continue;
+                // 这里不再限制 rareLv，真正做到“任意等级技能”都能补进列表。
+                if (skill == null || existingSkillIds.Contains(skill.skillID)) continue;
                 if (npcExistingSkillIds.Contains(skill.skillID)) continue;
             
                 var skillData = skill.DataBase();
@@ -1290,18 +1245,29 @@ public class PlotControllerPatches
     }
     
     
+    /// <summary>
+    /// 统一处理“传授后直接升满”，顺便兜住目标技能不存在的情况。
+    /// </summary>
+    private static void UpgradeTargetSkillToFull(HeroData targetHero, string skillIDParam)
+    {
+        if (targetHero == null || string.IsNullOrWhiteSpace(skillIDParam)) return;
+
+        var targetSkill = targetHero.FindSkill(int.Parse(skillIDParam));
+        if (targetSkill == null) return;
+
+        for (int i = 0; i < 10; i++)
+        {
+            targetHero.UpgradeSkill(targetSkill);
+        }
+    }
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.TeachNewSkillToNPCSure))]
     public static void PlotController_TeachNewSkillToNPCSure_Postfix(PlotController __instance, string skillIDParam)
     {
         if (__instance != null && Plugin.Instance.TeachNewSkillToNpc.Value)
         {
-            var a = __instance.targetInteractHero;
-            var b = a.FindSkill(int.Parse(skillIDParam));
-            for (int i = 0; i < 10; i++)
-            {
-                a.UpgradeSkill(b);
-            }
+            UpgradeTargetSkillToFull(__instance.targetInteractHero, skillIDParam);
         }
     }
 
@@ -1311,12 +1277,7 @@ public class PlotControllerPatches
     {
         if (__instance != null && Plugin.Instance.TeachNpc.Value)
         {
-            var a = __instance.targetInteractHero;
-            var b = a.FindSkill(int.Parse(skillIDParam));
-            for (int i = 0; i < 10; i++)
-            {
-                a.UpgradeSkill(b);
-            }
+            UpgradeTargetSkillToFull(__instance.targetInteractHero, skillIDParam);
         }
     }
     
@@ -1326,28 +1287,18 @@ public class PlotControllerPatches
     {
         if (__instance != null && Plugin.Instance.TeachNpc.Value)
         {
-            var a = __instance.targetInteractHero;
-            var b = a.FindSkill(int.Parse(skillIDParam));
-            for (int i = 0; i < 10; i++)
-            {
-                a.UpgradeSkill(b);
-            }
+            UpgradeTargetSkillToFull(__instance.targetInteractHero, skillIDParam);
         }
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(PlotController), nameof(PlotController.ForceTeachNewSkillToNPCSure))]
     public static void PlotController_ForceTeachNewSkillToNPCSure_Postfix(PlotController __instance, string skillIDParam)
     {
-        if (__instance != null && Plugin.Instance.TeachNpc.Value)
+        if (__instance != null && Plugin.Instance.TeachNewSkillToNpc.Value)
         {
-            var a = __instance.targetInteractHero;
-            var b = a.FindSkill(int.Parse(skillIDParam));
-            for (int i = 0; i < 10; i++)
-            {
-                a.UpgradeSkill(b);
-            }
+            UpgradeTargetSkillToFull(__instance.targetInteractHero, skillIDParam);
             if (Plugin.Instance.Interaction.Value) 
-                a.playerInteractionTimeData.ResetTime();
+                __instance.targetInteractHero?.playerInteractionTimeData?.ResetTime();
         }
     }
 }
