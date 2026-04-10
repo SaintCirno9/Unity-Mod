@@ -379,7 +379,7 @@ public class BookWriterDataPatches
 
 public class ChooseControllerPatches
 {
-    private static HeroData targetHero;
+    private static HeroData? targetHero;
     
     // 金龙生刷新购买情报
     [HarmonyPostfix]
@@ -414,9 +414,11 @@ public class ChooseControllerPatches
 
     #region 任意传授
     
-    // 临时存储交互英雄身份等级
+    // 临时存储交互英雄门派等级（用于任意传授时临时提升NPC门派等级）
+    // _forceLvModified 标记门派等级是否已被临时修改，防止重复恢复或错误恢复
     private static int _tempForceLv = -1;
     private static int _tempHeroId = -1;
+    private static bool _forceLvModified = false;
     
     
     /// <summary>
@@ -432,8 +434,10 @@ public class ChooseControllerPatches
             var instanceTargetInteractHero = __instance.targetInteractHero;
             
             if (instanceTargetInteractHero == null) return true;
-            instanceTargetInteractHero.heroForceLv = _tempForceLv;
-            _tempForceLv = -1;
+            
+            // 恢复NPC门派等级（在Choosen中恢复，而不是在UnshowChoosePanel中）
+            RestoreForceLv(instanceTargetInteractHero);
+            
             var chooseController = ChooseController.Instance;
             if (chooseController == null) return true;
             
@@ -453,7 +457,6 @@ public class ChooseControllerPatches
             
             var newSkill = new KungfuSkillLvData(selectedSkill.skillID);
             instanceTargetInteractHero.GetSkill(newSkill, true, true);
-            // targetHero.ChangeFavor(20, true, successSound:true);
             __instance.ChangeTargetInteractHeroFavor("20");
             
             if (Plugin.Instance.TeachNewSkillToNpc.Value)
@@ -480,17 +483,36 @@ public class ChooseControllerPatches
         targetHero = targetInteractHero;
         _tempForceLv = targetInteractHero.heroForceLv;
         _tempHeroId = targetInteractHero.heroID;
+        _forceLvModified = true;
         targetInteractHero.heroForceLv = 5;
+    }
+
+    /// <summary>
+    /// 恢复被临时修改的门派等级，并重置状态标记
+    /// </summary>
+    private static void RestoreForceLv(HeroData hero)
+    {
+        if (!_forceLvModified) return;
+        if (hero != null && _tempForceLv >= 0)
+        {
+            hero.heroForceLv = _tempForceLv;
+        }
+        _forceLvModified = false;
+        _tempForceLv = -1;
+        _tempHeroId = -1;
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ChooseController), nameof(ChooseController.UnshowChoosePanel))]
     public static void ChooseController_UnshowChoosePanel_Postfix(ChooseController __instance)
     {
+        // 只有在门派等级确实被修改过时才恢复
+        // 这处理了用户取消选择面板的情况（不经过Choosen）
+        if (!_forceLvModified) return;
+        
         var flag = HeroHelper.TryGetHeroByID(_tempHeroId, out var hero);
         if (__instance == null || !flag) return;
-        _tempHeroId = -1;
-        hero.heroForceLv = _tempForceLv;
+        RestoreForceLv(hero);
     }
     
     /// <summary>
@@ -583,10 +605,22 @@ public class ChooseControllerPatches
                     }
                 }
             }
+            
+            // 使用targetHero获取NPC已有技能列表，但需要做null检查和IL2CPP对象有效性检查
             var npcExistingSkillIds = new System.Collections.Generic.HashSet<int>();
-            if (targetHero is { kungfuSkills: not null })
+            var npcHero = targetHero;
+            // 如果targetHero为null或已被回收，尝试从PlotController获取当前交互英雄
+            if (npcHero == null)
             {
-                foreach (var skill in targetHero.kungfuSkills)
+                var plotController = PlotController.Instance;
+                if (plotController != null)
+                {
+                    npcHero = plotController.targetInteractHero;
+                }
+            }
+            if (npcHero is { kungfuSkills: not null })
+            {
+                foreach (var skill in npcHero.kungfuSkills)
                 {
                     if (skill != null)
                     {
@@ -1165,6 +1199,7 @@ public class HeroDataPatch
     {
         if (__instance == null) return;
         var n = __instance.nowShowHero;
+        if (n == null) return;
         
         int[] cdTable = { 30, 20, 15, 10, 5, 1, 0 };
         var lv = Mathf.Clamp(n.heroForceLv, 0, 6);
