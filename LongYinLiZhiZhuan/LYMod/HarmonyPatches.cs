@@ -202,7 +202,13 @@ public class BookWriterDataPatches
         Plugin.LOG.Msg($"[LYMod3.9.1 抄书] 智力：{zhiLi}, 学识：{xueShi}, 相关技能数值：{fightSkill}");
 
         var text = ColorizeText(GlobalData.AttriRatioString[skillLv + 1], skillLv);
-        var needValue = GlobalData.AttriLvNum[skillLv+1];
+        var needValue = skillLv switch
+        {
+            4 => 110,
+            5 => 120,
+            _ => GlobalData.AttriLvNum[skillLv + 1]
+        };
+
         Plugin.LOG.Msg($"[LYMod3.9.1 抄书] 需求数值：{needValue}, text：{text}");
         
         // 检测属性是否达标
@@ -212,9 +218,14 @@ public class BookWriterDataPatches
             return 0;
         }
         // 生活属性最大按120
-        if (xueShi < (skillLv == 5 ? 120 : needValue))
+        if (xueShi < needValue)
         {
-            if (skillLv == 5) text = "<color=#FF0000>120</color>";
+            text = skillLv switch
+            {
+                5 => "<color=#FF0000>120</color>",
+                4 => "<color=#FF8C06>110</color>",
+                _ => text
+            };
             OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本",lastTime:10f);
             return 0;
         }
@@ -275,7 +286,12 @@ public class BookWriterDataPatches
         Plugin.LOG.Msg($"[LYMod3.9.1 默写] 智力：{zhiLi}, 学识：{xueShi}, 相关技能数值：{fightSkill}");
         
         var text = ColorizeText(GlobalData.AttriRatioString[skillLv+1], skillLv);
-        var needValue = GlobalData.AttriLvNum[skillLv+1];
+        var needValue = skillLv switch
+        {
+            4 => 110,
+            5 => 120,
+            _ => GlobalData.AttriLvNum[skillLv + 1]
+        };
         Plugin.LOG.Msg($"[LYMod3.9.1 默写] 需求数值：{needValue}, text：{text}");
         
         // 检测属性是否达标
@@ -287,7 +303,12 @@ public class BookWriterDataPatches
         // 生活属性最大按120算
         if (xueShi < (skillLv == 5 ? 120 : needValue))
         {
-            if (skillLv == 5) text = "<color=#FF0000>120</color>";
+            text = skillLv switch
+            {
+                5 => "<color=#FF0000>120</color>",
+                4 => "<color=#FF8C06>110</color>",
+                _ => text
+            };
             OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本",lastTime:10f);
             return 0;
         }
@@ -396,6 +417,8 @@ public class ChooseControllerPatches
     // 临时存储交互英雄身份等级
     private static int _tempForceLv = -1;
     private static int _tempHeroId = -1;
+    
+    
     /// <summary>
     /// 拦截传授技能选择，绕过稀有度限制直接传授给NPC
     /// </summary>
@@ -406,10 +429,10 @@ public class ChooseControllerPatches
         
         if (__instance != null && Plugin.Instance.TeachAnyNewSkill.Value)
         {
-            var targetHero = __instance.targetInteractHero;
+            var instanceTargetInteractHero = __instance.targetInteractHero;
             
-            if (targetHero == null) return true;
-            targetHero.heroForceLv = _tempForceLv;
+            if (instanceTargetInteractHero == null) return true;
+            instanceTargetInteractHero.heroForceLv = _tempForceLv;
             _tempForceLv = -1;
             var chooseController = ChooseController.Instance;
             if (chooseController == null) return true;
@@ -423,24 +446,25 @@ public class ChooseControllerPatches
             var selectedSkill = skillIcon.skillLvData;
             if (selectedSkill == null) return true;
             
-            if (targetHero.FindSkill(selectedSkill.skillID) != null) return false;
+            if (instanceTargetInteractHero.FindSkill(selectedSkill.skillID) != null) return false;
             
-            var npcSkills = targetHero.kungfuSkills;
+            var npcSkills = instanceTargetInteractHero.kungfuSkills;
             if (npcSkills == null) return false;
             
             var newSkill = new KungfuSkillLvData(selectedSkill.skillID);
-            targetHero.GetSkill(newSkill, true, true);
+            instanceTargetInteractHero.GetSkill(newSkill, true, true);
             // targetHero.ChangeFavor(20, true, successSound:true);
             __instance.ChangeTargetInteractHeroFavor("20");
             
             if (Plugin.Instance.TeachNewSkillToNpc.Value)
             {
-                var skill = targetHero.FindSkill(newSkill.skillID);
+                var skill = instanceTargetInteractHero.FindSkill(newSkill.skillID);
                 for (int i = 0; i < 10; i++)
                 {
-                    targetHero.UpgradeSkill(skill);
+                    instanceTargetInteractHero.UpgradeSkill(skill);
                 }
             }
+            __instance.HideInteractUI();
             return false;
         }
 
@@ -530,8 +554,9 @@ public class ChooseControllerPatches
             }
         }
         
-        if (_filterType == ChooseFilterType.TeachNpcNewSkill && Plugin.Instance.TeachAnyNewSkill.Value)
+        if (_filterType is ChooseFilterType.ForceTeachNpcNewSkill or ChooseFilterType.TeachNpcNewSkill && Plugin.Instance.TeachAnyNewSkill.Value)
         {
+            Plugin.LOG.Msg(_filterType);
             var player = GameDataController.Instance?.gameSaveData?.WorldData?.Player();
             if (player == null || player.kungfuSkills == null) return;
             
@@ -700,64 +725,7 @@ public class AreaBuildingDataPatches
 {
     #region 建筑效果倍数
 
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(AreaBuildingDataBase), nameof(AreaBuildingDataBase.GetBuildingSpeAddData))]
-    public static void AreaBuildingDataBase_GetBuildingSpeAddData_Postfix(AreaBuildingDataBase __instance,
-        ForceSpeAddData __result)
-    {
-        if (__instance == null) return;
-        var dataBases = GameDataController.Instance.buildingDataBase;
-        var id = -1;
-        for (var i = 0; i < dataBases.Count; i++)
-        {
-            if (dataBases[i].name != __instance.name) continue;
-            id = i;
-            break;
-        }
-
-        if (!UIBuilderExtensions.BuildingTimesMap.TryGetValue(id, out var times) || times == 1) return;
-        var newDict = new Il2CppSystem.Collections.Generic.Dictionary<int, float>();
-        var dict = __result.forceSpeAddData;
-        foreach (var ky in dict)
-        {
-            if (ky.Value > 0)
-            {
-                newDict[ky.Key] = ky.Value * times;
-            }
-            else
-            {
-                newDict[ky.Key] = ky.Value; // 保留原值
-            }
-        }
-        __result.forceSpeAddData = newDict;
-    }
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(AreaBuildingDataBase), nameof(AreaBuildingDataBase.GetTotalChangeResource))]
-    public static void AreaBuildingDataBase_GetTotalChangeResource_Postfix(AreaBuildingDataBase __instance, 
-        Il2CppSystem.Collections.Generic.List<float> __result)
-    {
-        if (__instance == null) return;
-        var dataBases = GameDataController.Instance.buildingDataBase;
-        var id = -1;
-        for (var i = 0; i < dataBases.Count; i++)
-        {
-            if (dataBases[i].name != __instance.name) continue;
-            id = i;
-            break;
-        }
-
-        if (!UIBuilderExtensions.BuildingTimesMap.TryGetValue(id, out var times) || times == 1) return;
-        {
-            for (var i = 0; i < __result.Count; i++)
-            {
-                if (__result[i] > 0)
-                {
-                    __result[i] *= times;
-                }
-            }
-        }
-    }
-    
+    // 加成
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetBuildingSpeAddData))]
     public static void GetBuildingSpeAddData_Postfix(AreaBuildingData __instance, ref ForceSpeAddData __result)
@@ -769,31 +737,29 @@ public class AreaBuildingDataPatches
         var area = __instance.GetArea();
         var flag = HeroHelper.TryReadPlayer(out var player);
         if (area == null || !flag || area.belongForceID != player.belongForceID) return;
-        
-        if (UIBuilderExtensions.BuildingTimesMap.TryGetValue(__instance.buildingID, out int times) && times != 1)
+
+        if (!UIBuilderExtensions.BuildingTimesMap.TryGetValue(__instance.buildingID, out int times) || times == 1) return;
+        var dict = db.GetBuildingSpeAddData(__instance.lv).forceSpeAddData;
+        foreach (var ky in dict)
         {
-            var dict = db.GetBuildingSpeAddData(__instance.lv).forceSpeAddData;
-            foreach (var ky in dict)
-            {
-                __result.Set(ky.Key, __result.Get(ky.Key) * times);
-            }
+            __result.Set(ky.Key, __result.Get(ky.Key) * times);
         }
     }
-
+    // 每月收入
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetTotalChangeResource))]
     public static void GetTotalChangeResource_Postfix(AreaBuildingData __instance, 
         Il2CppSystem.Collections.Generic.List<float> __result)
     {
-        if (__instance == null) return;
-        if (UIBuilderExtensions.BuildingTimesMap.TryGetValue(__instance.buildingID, out int times) && times != 1)
+        var area = __instance.GetArea();
+        var flag = HeroHelper.TryReadPlayer(out var player);
+        if (__instance == null || area.belongForceID != player.belongForceID) return;
+        if (!UIBuilderExtensions.BuildingTimesMap.TryGetValue(__instance.buildingID, out int times) || times == 1) return;
+        for (var i = 0; i < __result.Count; i++)
         {
-            for (int i = 0; i < __result.Count; i++)
+            if (__result[i] > 0)
             {
-                if (__result[i] > 0)
-                {
-                    __result[i] *= times;
-                }
+                __result[i] *= times;
             }
         }
     }
@@ -1361,7 +1327,7 @@ public class ReadBookControllerPatches
     [HarmonyPatch(typeof(ReadBookTextController), nameof(ReadBookTextController.OnClick))]
     public static void ReadBookTextController_OnClick_Prefix(ReadBookTextController __instance)
     {
-        if (__instance == null) return;
+        if (__instance == null || !Plugin.Instance.ReadBookChangePatient1Flag.Value) return;
         __instance.textData.costPatient = __instance.textData.costPatient > 0 ? 1 : 0;
     }
     /// <summary>

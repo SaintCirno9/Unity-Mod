@@ -25,7 +25,7 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<bool> TeachNpc= null!; // 指点满级
     public MelonPreferences_Entry<bool> Interaction= null!; // 无限交互
     public MelonPreferences_Entry<float> ReadBook = null!; // 读书经验倍率
-    public MelonPreferences_Entry<bool> ReadBookChangePatient1Flag = null!; // 读书经验倍率
+    public MelonPreferences_Entry<bool> ReadBookChangePatient1Flag = null!; // 读书耐心1
     public MelonPreferences_Entry<bool> Explore= null!; // 探险耐力锁
     public MelonPreferences_Entry<bool> Cost0= null!; // 建筑升级资源消耗0
     public MelonPreferences_Entry<bool> RedBook= null!; // 必获得完本
@@ -284,14 +284,42 @@ public class Plugin : MelonMod
         
         if (Input.GetKeyDown(KeyCode.F6))
         {
-            var a= GlobalData.AttriLvNum;
+            // 1. 获取 PlotController 实例
+            var plotController = PlotController.Instance;
+
+            // 2. 设置交互的目标 NPC
+            HeroHelper.TryGetHeroByID(1, out var npcHero);
+            HeroHelper.TryReadPlayer(out var player);
+            plotController.targetInteractHero = npcHero; // 设置目标 NPC
+            plotController.sourceInteractHero = player;  // 设置玩家
+
+            // 3. 启动对话
+            // 创建对话
+            var plotData = new SinglePlotData();
+            plotData.plotText = $"{npcHero.heroName}：你好，有什么事吗？";
+        
+            // 创建选项
+            var choices = new Il2CppSystem.Collections.Generic.List<SinglePlotChoiceData>();
+        
+            // 闲聊选项
+            var chatChoice = new SinglePlotChoiceData();
+            chatChoice.choiceText = "闲聊";
+            chatChoice.callFuc = "ChatInteractHero";
+            chatChoice.callParam = "normal";
+            choices.Add(chatChoice);
+        
+            // 离开选项
+            var leaveChoice = new SinglePlotChoiceData();
+            leaveChoice.choiceText = "离开";
+            leaveChoice.callFuc = "GoNextPlot";
+            choices.Add(leaveChoice);
+        
+            plotData.choices = choices;
+        
+            // 显示对话
+            plotController.AddPlot(plotData);
             
-            var b = GlobalData.AttriRatioString;
             
-            for (int i = 0; i < a.Count; i++)
-            {
-                LOG.Msg($"{a[i]}, {b[i]}");
-            }
         }
         
     }
