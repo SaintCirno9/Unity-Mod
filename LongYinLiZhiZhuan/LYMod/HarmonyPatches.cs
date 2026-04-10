@@ -4,8 +4,10 @@ using Object = Il2CppSystem.Object;
 using HarmonyLib;
 using Il2Cpp;
 using LYMod.Helpers;
+using String = Il2CppSystem.String;
 
 namespace LYMod;
+
 
 public class DrinkUIControllerPatches
 {
@@ -29,6 +31,7 @@ public class DrinkUIControllerPatches
     [HarmonyPatch(typeof(DrinkUIController), nameof(DrinkUIController.FixedUpdate))]
     public static void DrinkUIController_FixedUpdate_Postfix(DrinkUIController __instance)
     {
+        if (__instance ==null || !Plugin.Instance.DrinkUiAutoFillFlag.Value) return;
         __instance.SetEnemyFillAmount(1);
     }
 
@@ -73,14 +76,23 @@ public class TimeDataPatches
 
 public class PoisonPatches
 {
-    private static readonly Dictionary<string, float> _poisonValuesBeforeBattle = new();
+    private static readonly Dictionary<string, float> PoisonValuesBeforeBattle = new();
     
+    //给装备附毒时间
     [HarmonyPostfix]
     [HarmonyPatch(typeof(CraftPoisonUIController), nameof(CraftPoisonUIController.GetCostTime))]
     public static void CraftPoisonUIController_GetCostTime_Postfix(CraftPoisonUIController __instance, ref int __result)
     {
-        if (__instance != null)
-            __result = 1;
+        if (__instance == null || !Plugin.Instance.PoisonTime1Flag.Value) return;
+        __result = 1;
+    }
+    //引毒/炼蛊时间
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(SpePoisonController), nameof(SpePoisonController.GetCostTime))]
+    public static void SpePoisonController_GetCostTime_Postfix(SpePoisonController __instance, ref int __result)
+    {
+        if (__instance == null || !Plugin.Instance.PoisonTime1Flag.Value) return;
+        __result = 1;
     }
     [HarmonyPostfix]
     [HarmonyPatch(typeof(CraftPoisonUIController), nameof(CraftPoisonUIController.GetChangePoisonNum))]
@@ -97,7 +109,7 @@ public class PoisonPatches
     public static void StartBattleButtonClicked_Prefix(BattleController __instance)
     {
         if (!Plugin.Instance.PoisonNumReduceFlag.Value) return;
-        _poisonValuesBeforeBattle.Clear();
+        PoisonValuesBeforeBattle.Clear();
         var gc = GameController.Instance;
         if (gc == null) return;
         var player = gc.worldData.Player();
@@ -107,7 +119,7 @@ public class PoisonPatches
         {
             if (item.Equiped() && item.equipmentData?.equipPoisonData is { poisonNum: > 0 })
             {
-                _poisonValuesBeforeBattle[item.name] = item.equipmentData.equipPoisonData.poisonNum;
+                PoisonValuesBeforeBattle[item.name] = item.equipmentData.equipPoisonData.poisonNum;
                 Plugin.LOG.Msg($"[Poison] Before Battle - Item: {item.name}, poisonNum: {item.equipmentData.equipPoisonData.poisonNum}");
             }
         }
@@ -127,7 +139,7 @@ public class PoisonPatches
         {
             if (item.Equiped() && item.equipmentData?.equipPoisonData != null)
             {
-                var beforeValue = _poisonValuesBeforeBattle.GetValueOrDefault(item.name, 0);
+                var beforeValue = PoisonValuesBeforeBattle.GetValueOrDefault(item.name, 0);
                 var afterValue = item.equipmentData.equipPoisonData.poisonNum;
                 var diff = afterValue - beforeValue;
                 //Plugin.LOG.Msg($"[Poison] After Battle - Item: {item.name}, Before: {beforeValue}, After: {afterValue}, Diff: {diff}");
@@ -181,30 +193,34 @@ public class BookWriterDataPatches
         var skillLv = originalBook.bookData.DataBase().rareLv;
         // 书完整度
         var bookRareLv = originalBook.rareLv;
+        Plugin.LOG.Msg($"[LYMod3.9.1 抄书] 技能类别：{skillType}, 技能稀有度：{skillLv}, 抄书原本完整度：{bookRareLv}");
         
         // 智力 学识 抄书人对应技能值
         var zhiLi = hero.totalAttri[2];
         var xueShi = hero.totalLivingSkill[2];
         var fightSkill = hero.totalFightSkill[skillType];
+        Plugin.LOG.Msg($"[LYMod3.9.1 抄书] 智力：{zhiLi}, 学识：{xueShi}, 相关技能数值：{fightSkill}");
 
-        var text = ColorizeText(GlobalData.AttriRatioString[skillType + 1], skillLv);
+        var text = ColorizeText(GlobalData.AttriRatioString[skillLv + 1], skillLv);
         var needValue = GlobalData.AttriLvNum[skillLv+1];
+        Plugin.LOG.Msg($"[LYMod3.9.1 抄书] 需求数值：{needValue}, text：{text}");
+        
         // 检测属性是否达标
         if (zhiLi < needValue)
         {
-            OtherHelper.AddInfoTab($"智力属性未达到{text}，只能抄到残本");
+            OtherHelper.AddInfoTab($"智力属性未达到{text}，只能抄到残本",lastTime:10f);
             return 0;
         }
         // 生活属性最大按120
         if (xueShi < (skillLv == 5 ? 120 : needValue))
         {
             if (skillLv == 5) text = "<color=#FF0000>120</color>";
-            OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本");
+            OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本",lastTime:10f);
             return 0;
         }
         if (fightSkill < needValue)
         {
-            OtherHelper.AddInfoTab($"{GlobalData.FightSkillName[skillType]}属性未达到{text}，只能抄到残本");
+            OtherHelper.AddInfoTab($"{GlobalData.FightSkillName[skillType]}属性未达到{text}，只能抄到残本",lastTime:10f);
             return 0;
         }
         // 天赋
@@ -248,31 +264,36 @@ public class BookWriterDataPatches
         var skillType = ksld.Type();
         // 技能稀有度
         var skillLv = ksld.DataBase().rareLv;
+        // 技能修炼到的等级
+        var lv = ksld.lv;
+        Plugin.LOG.Msg($"[LYMod3.9.1 默写] 技能类别：{skillType}, 技能稀有度：{skillLv}, 技能修炼到的等级：{lv}");
+        
         // 智力 学识 抄书人对应技能值
         var zhiLi = hero.totalAttri[2];
         var xueShi = hero.totalLivingSkill[2];
         var fightSkill = hero.totalFightSkill[skillType];
-        // 技能修炼到的等级
-        var lv = ksld.lv;
+        Plugin.LOG.Msg($"[LYMod3.9.1 默写] 智力：{zhiLi}, 学识：{xueShi}, 相关技能数值：{fightSkill}");
         
-        var text = ColorizeText(GlobalData.AttriRatioString[skillType], skillLv);
+        var text = ColorizeText(GlobalData.AttriRatioString[skillLv+1], skillLv);
         var needValue = GlobalData.AttriLvNum[skillLv+1];
+        Plugin.LOG.Msg($"[LYMod3.9.1 默写] 需求数值：{needValue}, text：{text}");
+        
         // 检测属性是否达标
         if (zhiLi < needValue)
         {
-            OtherHelper.AddInfoTab($"智力属性未达到{text}，只能抄到残本");
+            OtherHelper.AddInfoTab($"智力属性未达到{text}，只能抄到残本",lastTime:10f);
             return 0;
         }
         // 生活属性最大按120算
         if (xueShi < (skillLv == 5 ? 120 : needValue))
         {
-            if (skillLv == 5) text = "<color=red>120</color>";
-            OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本");
+            if (skillLv == 5) text = "<color=#FF0000>120</color>";
+            OtherHelper.AddInfoTab($"学识属性未达到{text}，只能抄到残本",lastTime:10f);
             return 0;
         }
         if (fightSkill < needValue)
         {
-            OtherHelper.AddInfoTab($"{GlobalData.FightSkillName[skillType]}属性未达到{text}，只能抄到残本");
+            OtherHelper.AddInfoTab($"{GlobalData.FightSkillName[skillType]}属性未达到{text}，只能抄到残本",lastTime:10f);
             return 0;
         }
         
@@ -409,7 +430,8 @@ public class ChooseControllerPatches
             
             var newSkill = new KungfuSkillLvData(selectedSkill.skillID);
             targetHero.GetSkill(newSkill, true, true);
-            targetHero.ChangeFavor(20, true, successSound:true);
+            // targetHero.ChangeFavor(20, true, successSound:true);
+            __instance.ChangeTargetInteractHeroFavor("20");
             
             if (Plugin.Instance.TeachNewSkillToNpc.Value)
             {
@@ -676,12 +698,71 @@ public class HeroTagIconControllerPatches
 
 public class AreaBuildingDataPatches
 {
+    #region 建筑效果倍数
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildingDataBase), nameof(AreaBuildingDataBase.GetBuildingSpeAddData))]
+    public static void AreaBuildingDataBase_GetBuildingSpeAddData_Postfix(AreaBuildingDataBase __instance,
+        ForceSpeAddData __result)
+    {
+        if (__instance == null) return;
+        var dataBases = GameDataController.Instance.buildingDataBase;
+        var id = -1;
+        for (var i = 0; i < dataBases.Count; i++)
+        {
+            if (dataBases[i].name != __instance.name) continue;
+            id = i;
+            break;
+        }
+
+        if (!UIBuilderExtensions.BuildingTimesMap.TryGetValue(id, out var times) || times == 1) return;
+        var newDict = new Il2CppSystem.Collections.Generic.Dictionary<int, float>();
+        var dict = __result.forceSpeAddData;
+        foreach (var ky in dict)
+        {
+            if (ky.Value > 0)
+            {
+                newDict[ky.Key] = ky.Value * times;
+            }
+            else
+            {
+                newDict[ky.Key] = ky.Value; // 保留原值
+            }
+        }
+        __result.forceSpeAddData = newDict;
+    }
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(AreaBuildingDataBase), nameof(AreaBuildingDataBase.GetTotalChangeResource))]
+    public static void AreaBuildingDataBase_GetTotalChangeResource_Postfix(AreaBuildingDataBase __instance, 
+        Il2CppSystem.Collections.Generic.List<float> __result)
+    {
+        if (__instance == null) return;
+        var dataBases = GameDataController.Instance.buildingDataBase;
+        var id = -1;
+        for (var i = 0; i < dataBases.Count; i++)
+        {
+            if (dataBases[i].name != __instance.name) continue;
+            id = i;
+            break;
+        }
+
+        if (!UIBuilderExtensions.BuildingTimesMap.TryGetValue(id, out var times) || times == 1) return;
+        {
+            for (var i = 0; i < __result.Count; i++)
+            {
+                if (__result[i] > 0)
+                {
+                    __result[i] *= times;
+                }
+            }
+        }
+    }
     
     [HarmonyPostfix]
     [HarmonyPatch(typeof(AreaBuildingData), nameof(AreaBuildingData.GetBuildingSpeAddData))]
     public static void GetBuildingSpeAddData_Postfix(AreaBuildingData __instance, ref ForceSpeAddData __result)
     {
-        if (__instance == null || Plugin.Instance.BuildingSpeTimes.Value == 1) return;
+        if (__instance == null) return;
         var db = __instance.DataBase();
         if (db == null) return;
         
@@ -689,12 +770,12 @@ public class AreaBuildingDataPatches
         var flag = HeroHelper.TryReadPlayer(out var player);
         if (area == null || !flag || area.belongForceID != player.belongForceID) return;
         
-        if (UIBuilderExtensions.EnabledBuildingIDs.Contains(__instance.buildingID))
+        if (UIBuilderExtensions.BuildingTimesMap.TryGetValue(__instance.buildingID, out int times) && times != 1)
         {
             var dict = db.GetBuildingSpeAddData(__instance.lv).forceSpeAddData;
             foreach (var ky in dict)
             {
-                __result.Set(ky.Key, __result.Get(ky.Key) * Plugin.Instance.BuildingSpeTimes.Value);
+                __result.Set(ky.Key, __result.Get(ky.Key) * times);
             }
         }
     }
@@ -704,18 +785,19 @@ public class AreaBuildingDataPatches
     public static void GetTotalChangeResource_Postfix(AreaBuildingData __instance, 
         Il2CppSystem.Collections.Generic.List<float> __result)
     {
-        if (__instance == null || Plugin.Instance.BuildingSpeTimes.Value == 1) return;
-        if (UIBuilderExtensions.EnabledBuildingIDs.Contains(__instance.buildingID))
+        if (__instance == null) return;
+        if (UIBuilderExtensions.BuildingTimesMap.TryGetValue(__instance.buildingID, out int times) && times != 1)
         {
             for (int i = 0; i < __result.Count; i++)
             {
                 if (__result[i] > 0)
                 {
-                    __result[i] *= Plugin.Instance.BuildingSpeTimes.Value;
+                    __result[i] *= times;
                 }
             }
         }
     }
+    #endregion
     
     [HarmonyPrefix]
     [HarmonyPatch(typeof(GameDataController), nameof(GameDataController.GameDataIntoGame))]
@@ -813,19 +895,19 @@ public class BreakThroughChoiceControllerPatch
 // 写书1天
 public class BookWriterUIControllerPatches
 {
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(BookWriterUIController), nameof(BookWriterUIController.ShowBookWriterUI))]
-    public static void BookWriterUIController_ShowBookWriterUI_Postfix(BookWriterUIController __instance)
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(BookWriterUIController), nameof(BookWriterUIController.SureButtonClicked))]
+    public static bool BookWriterUIController_SureButtonClicked_Prefix(BookWriterUIController __instance, GameObject buttonClick)
     {
-        if (__instance != null && Plugin.Instance.CopyBookFlag.Value)
+        if (__instance == null || !Plugin.Instance.CopyBookFlag.Value) return true;
+        var list = __instance.targetBookWriterList;
+        foreach (var bwd in list)
         {
-            var list = __instance.targetBookWriterList;
-            foreach (var bwd in list)
-            {
-                if (bwd != null && bwd.workPercent < 0.99)
-                    bwd.workPercent = 0.99999f;
-            }
+            if (bwd != null && bwd.workPercent < 0.99)
+                bwd.workPercent = 0.99999f;
         }
+
+        return true;
     }
 }
 
@@ -1108,7 +1190,31 @@ public class HeroDataPatch
             num *= Plugin.Instance.FavorTimes.Value;
         }
 
-        return true; 
+        return true;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroDetailController), nameof(HeroDetailController.ClothChoiceButtonClicked))]
+    public static void HeroDetailController_ClothChoiceButtonClicked_Postfix(HeroDetailController __instance, int skinID, int skinLv)
+    {
+        if (__instance == null) return;
+        var n = __instance.nowShowHero;
+        
+        int[] cdTable = { 30, 20, 15, 10, 5, 1, 0 };
+        var lv = Mathf.Clamp(n.heroForceLv, 0, 6);
+        n.changeSkinCd = cdTable[lv];
+        
+    }
+
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeroDetailController), nameof(HeroDetailController.Update))]
+    public static void HeroDetailController_Update_Postfix(HeroDetailController __instance)
+    {
+        if (__instance == null || __instance.nowShowHero is not { changeSkinCd: > 0 }) return;
+        int[] cdTable = { 30, 15, 10, 5, 3, 0};
+        var lv = Mathf.Clamp(__instance.nowShowHero.heroForceLv, 0, 5);
+        __instance.nowShowHero.changeSkinCd = cdTable[lv];
     }
     
     [HarmonyPrefix]
@@ -1247,6 +1353,21 @@ public class PlotControllerPatches
 
 public class ReadBookControllerPatches
 {
+    /// <summary>
+    /// 读书耐心扣减1
+    /// </summary>
+    /// <param name="__instance"></param>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ReadBookTextController), nameof(ReadBookTextController.OnClick))]
+    public static void ReadBookTextController_OnClick_Prefix(ReadBookTextController __instance)
+    {
+        if (__instance == null) return;
+        __instance.textData.costPatient = __instance.textData.costPatient > 0 ? 1 : 0;
+    }
+    /// <summary>
+    /// 读书倍率
+    /// </summary>
+    /// <param name="__instance"></param>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ReadBookController), nameof(ReadBookController.FinishRead))]
     public static void ReadBookController_FinishRead_Prefix(ReadBookController __instance)
@@ -1257,18 +1378,41 @@ public class ReadBookControllerPatches
         }
     }
 }
-
+/// <summary>
+/// 探险相关
+/// </summary>
 public class ExploreControllerPatches
 {
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ExploreController), nameof(ExploreController.PlayerFinishMove))]
     public static void ExploreController_PlayerFinishMove_Postfix(ExploreController __instance)
     {
-        if (__instance != null &&  Plugin.Instance.Explore.Value)
-        {
-            __instance.leftPower = 1000;
-        }
+        if (__instance == null || !Plugin.Instance.Explore.Value) return;
+        __instance.leftPower = 1000;
     }
+    // 自动去除迷雾补丁
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ExploreController), nameof(ExploreController.GenerateExploreMap))]
+    public static void GenerateExploreMap_Postfix(ExploreController __instance)
+    {
+        if (__instance == null || !Plugin.Instance.ExploreSeeAllFlag.Value) return;
+        __instance.SeeAllTile();
+    }
+    // 随意移动
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ExploreTileUnitController), nameof(ExploreTileUnitController.OnClick))]
+    public static void ExploreTileUnitController_OnClick_Postfix(ExploreTileUnitController __instance)
+    {
+        if  (__instance == null || !Plugin.Instance.ExploreFreeMoveFlag.Value) return;
+        var ec = ExploreController.Instance;
+        if (ec == null) return;
+        var exploreTileData = __instance.exploreTileData;
+        var column = exploreTileData.column;
+        var row = exploreTileData.row;
+        ec.PlayerEnterGrid(column, row);
+    }
+    
+    
 }
 
 public class ForceDataPatches
@@ -1480,15 +1624,18 @@ public class ItemListDataPatches
                 }
             }
             
+            // 获得的武学书都是红色品质
             if (targetItem.type == ItemType.Book && Plugin.Instance.RedBook.Value)
             {
                 targetItem = targetItem.SetBookData(targetItem.bookData.skillID, 5);
             }
 
+            // 获得材料
             if (targetItem.type == ItemType.Material && Plugin.Instance.RedMaterial)
             {
                 targetItem.itemLv = 5;
                 targetItem.rareLv = 5;
+                targetItem.value = 9999;
                 
                 var inputBox = OtherHelper.ParseInputBox(Plugin.Instance.MaterialAttr);
                 if (inputBox == null)

@@ -25,6 +25,7 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<bool> TeachNpc= null!; // 指点满级
     public MelonPreferences_Entry<bool> Interaction= null!; // 无限交互
     public MelonPreferences_Entry<float> ReadBook = null!; // 读书经验倍率
+    public MelonPreferences_Entry<bool> ReadBookChangePatient1Flag = null!; // 读书经验倍率
     public MelonPreferences_Entry<bool> Explore= null!; // 探险耐力锁
     public MelonPreferences_Entry<bool> Cost0= null!; // 建筑升级资源消耗0
     public MelonPreferences_Entry<bool> RedBook= null!; // 必获得完本
@@ -57,8 +58,8 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<float> ZhongyuanLv= null!; //鬼市商店等级
     public MelonPreferences_Entry<float> ChanDaoRate= null!; //禅宗道法修行倍率
     public MelonPreferences_Entry<string> ForceSpeFunctions= null!; // 门派特性
-    public MelonPreferences_Entry<string> SelectedBuildings= null!; // 选择翻倍的建筑id
-    public MelonPreferences_Entry<int> BuildingSpeTimes= null!; // 建筑效果倍数值
+    public MelonPreferences_Entry<string> SelectedBuildings= null!; // 选择翻倍的建筑id（兼容旧配置）
+    public MelonPreferences_Entry<string> BuildingTimesMapStr= null!; // 建筑倍率映射 "索引:倍率,索引:倍率"
     public MelonPreferences_Entry<float> PoisonRate= null!; // 淬毒倍率
     public MelonPreferences_Entry<bool> PoisonNumReduceFlag= null!; // 淬毒值消耗开关
     public MelonPreferences_Entry<bool> TimeFreezeFlag= null!; // 时间停止
@@ -77,6 +78,9 @@ public class Plugin : MelonMod
     public MelonPreferences_Entry<bool> BookWriteChangeFlag = null!; // 抄书/默写逻辑变更
     public MelonPreferences_Entry<bool> DodgeHitFlag = null!; // 轻功训练不受击
     public MelonPreferences_Entry<bool> DrinkUiAutoFillFlag = null!; // 喝酒自动倒满
+    public MelonPreferences_Entry<bool> ExploreSeeAllFlag = null!; // 探险去除迷雾
+    public MelonPreferences_Entry<bool> ExploreFreeMoveFlag = null!; // 探险随意移动
+    public MelonPreferences_Entry<bool> PoisonTime1Flag = null!; // 毒相关消耗1天
 
     
     
@@ -147,11 +151,11 @@ public class Plugin : MelonMod
         ZhongyuanLv = MainCategory.CreateEntry("ZhongyuanLv", 13.5f, description:"鬼市商店等级");
         ChanDaoRate = MainCategory.CreateEntry("ChanDaoRate", 1.0f, description:"禅宗道法修行倍率");
         ForceSpeFunctions = MainCategory.CreateEntry("ForceSpeFunctions", "", description:"选择的门派特性");
-        SelectedBuildings = MainCategory.CreateEntry("SelectedBuildings", "", description:"选择的翻倍建筑id");
+        SelectedBuildings = MainCategory.CreateEntry("SelectedBuildings", "", description:"选择的翻倍建筑id（兼容旧配置）");
         PoisonRate = MainCategory.CreateEntry("PoisonRate", 1.0f, description:"淬毒值倍率");
         ExpRateMultiplier = MainCategory.CreateEntry("ExpRateMultiplier", 1.0f, description:"游戏难度经验倍率,最高难度非本门经验倍率1.6（+60%）,这里默认2（+100%）");
         ForceContributionRate = MainCategory.CreateEntry("ForceContributionRate", 1.0f,description:"非本门功绩倍率");
-        BuildingSpeTimes = MainCategory.CreateEntry("BuildingSpeTimes", 1,description:"建筑效果翻倍值");
+        BuildingTimesMapStr = MainCategory.CreateEntry("BuildingTimesMapStr", "",description:"建筑倍率映射 格式:索引:倍率,索引:倍率");
         
         PoisonNumReduceFlag = MainCategory.CreateEntry("PoisonNumReduceFlag", false, description:"淬毒消耗开关");
         UpgradeDay1 = MainCategory.CreateEntry("upgrade1", false, description:"升级一天");
@@ -185,6 +189,10 @@ public class Plugin : MelonMod
         ExternalStorageFlag = MainCategory.CreateEntry("ExternalStorageFlag", false,  description: "藏宝阁价值容量锁定1亿开关");
         BookWriteChangeFlag = MainCategory.CreateEntry("BookWriteChangeFlag", false,  description: "抄书/默写逻辑变更");
         DodgeHitFlag = MainCategory.CreateEntry("DodgeHitFlag", false,  description: "轻功训练不受击");
+        ExploreSeeAllFlag = MainCategory.CreateEntry("ExploreSeeAllFlag", false,  description: "探险去除迷雾");
+        ExploreFreeMoveFlag = MainCategory.CreateEntry("ExploreFreeMoveFlag", false,  description: "探险随意移动");
+        ReadBookChangePatient1Flag = MainCategory.CreateEntry("ReadBookChangePatient1Flag", false,  description: "读书耐心减1");
+        PoisonTime1Flag = MainCategory.CreateEntry("PoisonTime1Flag", false,  description: "毒相关消耗1天");
         #endregion
       
         var harmony = new HarmonyLib.Harmony("LYMod");
@@ -257,6 +265,7 @@ public class Plugin : MelonMod
             RollHelper.TryAuctionRoll();
             RollHelper.TryZhongyuanRoll();
             RollHelper.TryRefreshRecruitList();
+            RollHelper.TrySpePoisonRoll();
         }
         
         if (BreakMaxLimitFlag.Value || _breakMaxLimitLittleFlag.Value)
@@ -575,9 +584,10 @@ public class Plugin : MelonMod
         builder.BeginFoldout("个人相关").Space(10)
             .AddAutoSaveRow("练功倍率:", StudyFightRate, "闭关倍率:",  StudyUniqeRate)
             .AddAutoSaveRow("实战倍率:", BattleChangeSkillFightRate,  "读书倍率:", ReadBook)
+            .AddAutoSaveRow("读书耐心减1", ReadBookChangePatient1Flag, "毒相关耗时1天", PoisonTime1Flag)
             .AddAutoSaveRow("突破倍率:", RedBreak, "抄书一天", CopyBookFlag)
-            .AddAutoSaveRow("获得金钱倍数",MoneyTimes, "莫高窟遗忘任意技能", RemoveAnySkill)
-            .AddAutoSaveRow("生活经验倍率", LivingSkillExpRate, "生活潜力倍数", MaxLivingSkillExpTimes)
+            .AddAutoSaveRow("获得金钱倍数:",MoneyTimes, "莫高窟遗忘任意技能", RemoveAnySkill)
+            .AddAutoSaveRow("生活经验倍率:", LivingSkillExpRate, "生活潜力倍数:", MaxLivingSkillExpTimes)
             .AddAutoSaveRow("抄书/默写逻辑变更", BookWriteChangeFlag, "轻功训练不受击", DodgeHitFlag)
             .Space(10)
             .AddLabelRow("突破属性修改方案1：")
@@ -594,20 +604,20 @@ public class Plugin : MelonMod
             }, 275)
             .EndHorizontal()
             .BeginHorizontal().AddLinkedString("随机值：", ()=> BreakChoiceListStr,val => BreakChoiceListStr = val, "bcls", labelWidth: 75, inputWidth: 225).EndHorizontal()
-            .BeginHorizontal().AddLinkedBool("指定随机值：", ()=>BreakChoiceFlag, val => BreakChoiceFlag = val, labelWidth:110).EndHorizontal()
+            .BeginHorizontal().AddLinkedBool("指定随机值", ()=>BreakChoiceFlag, val => BreakChoiceFlag = val, labelWidth:110).EndHorizontal()
             .AddLabelRow("突破属性修改方案2：")
             .BeginHorizontal()
             .AddLinkedString("指定属性类别：", ()=>BreakType, val => BreakType = val, "bt",labelWidth:130, inputWidth:40)
             .Space(10)
             .AddLinkedString("指定属性的值：", ()=>BreakValue, val => BreakValue = val, "bv",labelWidth:130, inputWidth:40)
             .EndHorizontal()
-            .BeginHorizontal().AddLinkedBool("突破指定类型和值：",()=>BreakFlag, val => BreakFlag = val, labelWidth:170).EndHorizontal()
+            .BeginHorizontal().AddLinkedBool("突破指定类型和值",()=>BreakFlag, val => BreakFlag = val, labelWidth:170).EndHorizontal()
             .EndFoldout();
         
         builder.BeginFoldout("门派相关").Space(10)
             .AddButtonRow("刷新门派月限制", ForceHelper.ResetForceLimits)
             .AddAutoSaveRow("研究一天",ReasearchFlag, "禅道修行倍率:", ChanDaoRate)
-            .AddAutoSaveRow("建筑资源零消耗",Cost0, "建造升级移动拆除1天:", UpgradeDay1)
+            .AddAutoSaveRow("建筑资源零消耗",Cost0, "建造升级移动拆除1天", UpgradeDay1)
             .AddAutoSaveRow("非本门功绩倍率:", ForceContributionRate,"特殊建筑上限", MaxSpeBuildingNum)
             .EndFoldout();
         
@@ -636,6 +646,7 @@ public class Plugin : MelonMod
         
         builder.BeginFoldout("其他相关").Space(10)
             .AddAutoSaveRow("探险耐力锁定", Explore, "跳过战斗", BattleSkipFlag)
+            .AddAutoSaveRow("探险去除迷雾", ExploreSeeAllFlag, "探险随意移动", ExploreFreeMoveFlag)
             .AddAutoSaveRow("按R键重新Roll", _breakRollFlag, "时间暂停", TimeFreezeFlag)
             .AddAutoSaveRow("自动鉴宝",AutoJianBaoFlag, "斗酒一回胜利", DrinkOneWinFlag)
             .AddAutoSave("喝酒自动倒满", DrinkUiAutoFillFlag)
@@ -665,7 +676,6 @@ public class Plugin : MelonMod
             .EndHorizontal()
             .EndFoldout();
         
-       
     }
 }
 

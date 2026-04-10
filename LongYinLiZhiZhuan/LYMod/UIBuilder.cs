@@ -886,10 +886,10 @@ public static class UIBuilderExtensions
 
     #region 功能：建筑效果翻倍
     
-    public static HashSet<int> EnabledBuildingIDs = new();
+    public static Dictionary<int, int> BuildingTimesMap = new(); // 建筑索引 -> 倍率值
     private static readonly List<AreaBuildingDataBase> AllBuildings = new ();
     private static int _selectedBuildingIDs = -1;
-    private static string _buildingTimesInput = "";
+    private static Dictionary<int, string> _buildingTimesInputs = new(); // 建筑索引 -> 倍率输入文本
 
     /// <summary>
     /// 在 UIBuilder 绘制建筑属性翻倍选择器
@@ -902,22 +902,13 @@ public static class UIBuilderExtensions
             GUILayout.Space(5);
             GUILayout.BeginVertical("Box");
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("刷新", GUILayout.Width(60))) RefreshForceList();
+            if (GUILayout.Button("刷新", GUILayout.Width(60))) RefreshBuildingList();
             if (GUILayout.Button("全选", GUILayout.Width(60)))
             {
-                for (int i = 0; i < AllBuildings.Count; i++) EnabledBuildingIDs.Add(i);
+                for (int i = 0; i < AllBuildings.Count; i++) BuildingTimesMap.TryAdd(i, 1);
             }
             if (GUILayout.Button("保存", GUILayout.Width(60))) SaveSelectedBuildings();
-            if (GUILayout.Button("清空", GUILayout.Width(60))) EnabledBuildingIDs.Clear();
-            GUILayout.EndHorizontal();
-            GUILayout.Space(10);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("建筑效果倍数：");
-            if (string.IsNullOrEmpty(_buildingTimesInput))
-            {
-                _buildingTimesInput = Convert.ToString(Plugin.Instance.BuildingSpeTimes.Value);
-            }
-            _buildingTimesInput = GUILayout.TextField(_buildingTimesInput);
+            if (GUILayout.Button("清空", GUILayout.Width(60))) BuildingTimesMap.Clear();
             GUILayout.EndHorizontal();
             GUILayout.Space(10);
             // --- 建筑列表遍历 ---
@@ -928,7 +919,7 @@ public static class UIBuilderExtensions
                 {
                     continue; 
                 }
-                bool enabled = EnabledBuildingIDs.Contains(m);
+                bool enabled = BuildingTimesMap.ContainsKey(m);
                 // 列表项
                 GUILayout.BeginVertical("Box");
                 GUILayout.BeginHorizontal();
@@ -936,13 +927,26 @@ public static class UIBuilderExtensions
                 bool newEnabled = GUILayout.Toggle(enabled, "", GUILayout.Width(20));
                 if (newEnabled != enabled)
                 {
-                    if (newEnabled) EnabledBuildingIDs.Add(m);
-                    else EnabledBuildingIDs.Remove(m);
+                    if (newEnabled) BuildingTimesMap[m] = 1; // 默认倍率1
+                    else BuildingTimesMap.Remove(m);
+                    enabled = newEnabled; // 及时更新，防止同帧内倍率输入框写回
                 }
 
-                if (GUILayout.Button($"{building.name}", GUI.skin.label, GUILayout.Width(340)))
+                if (GUILayout.Button($"{building.name}", GUI.skin.label, GUILayout.Width(260)))
                 {
                     _selectedBuildingIDs = _selectedBuildingIDs == m ? -1 : m; 
+                }
+
+                // 每个建筑独立的倍率输入
+                GUILayout.Label("倍率:", GUILayout.Width(50));
+                if (!_buildingTimesInputs.ContainsKey(m))
+                {
+                    _buildingTimesInputs[m] = enabled ? BuildingTimesMap[m].ToString() : "1";
+                }
+                _buildingTimesInputs[m] = GUILayout.TextField(_buildingTimesInputs[m], GUILayout.Width(40));
+                if (int.TryParse(_buildingTimesInputs[m], out int timesVal) && timesVal >= 1)
+                {
+                    if (enabled) BuildingTimesMap[m] = timesVal;
                 }
 
                 GUILayout.EndHorizontal();
@@ -1018,24 +1022,27 @@ public static class UIBuilderExtensions
     }
     
     /// <summary>
-    /// 保存选择翻倍效果的建筑
+    /// 保存选择翻倍效果的建筑及其独立倍率
     /// </summary>
     private static void SaveSelectedBuildings()
     {
-        Plugin.Instance.SelectedBuildings.Value = string.Join(",", EnabledBuildingIDs.Select(n => n.ToString()));
-        Plugin.Instance.BuildingSpeTimes.Value = int.Parse(_buildingTimesInput);
+        // 序列化格式: "索引:倍率,索引:倍率"
+        Plugin.Instance.BuildingTimesMapStr.Value = string.Join(",",
+            BuildingTimesMap.Select(kv => $"{kv.Key}:{kv.Value}"));
         Plugin.Instance.MainCategory.SaveToFile();
-        
-        Plugin.LOG.Msg($"倍数：{Plugin.Instance.BuildingSpeTimes.Value}");
-        Plugin.LOG.Msg($"选择的建筑ID：{Plugin.Instance.SelectedBuildings.Value}");
+        Plugin.LOG.Msg($"建筑倍率映射：{Plugin.Instance.BuildingTimesMapStr.Value}");
+        GameController.Instance.ManageAreaStuff();
+        GameController.Instance.ManageForceStuff();
+        GameController.Instance.ManageForceSpeResearch();
     }
     /// <summary>
     /// 刷新建筑数据
     /// </summary>
     public static void RefreshBuildingList()
     {
-        EnabledBuildingIDs.Clear();
+        BuildingTimesMap.Clear();
         AllBuildings.Clear();
+        _buildingTimesInputs.Clear();
         // 读取所有建筑数据
         var gdc = GameDataController.Instance;
         if (gdc == null) return;
@@ -1043,13 +1050,17 @@ public static class UIBuilderExtensions
         {
             AllBuildings.Add(bdb);
         }
-        // 读取已经选中的数据
-        if (Plugin.Instance.SelectedBuildings.Value != "")
+        // 优先读取新格式配置 "索引:倍率,索引:倍率"
+        if (!string.IsNullOrEmpty(Plugin.Instance.BuildingTimesMapStr.Value))
         {
-            EnabledBuildingIDs = new HashSet<int>(
-                Plugin.Instance.SelectedBuildings.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(int.Parse)
-            );
+            foreach (var pair in Plugin.Instance.BuildingTimesMapStr.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = pair.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[0], out int id) && int.TryParse(parts[1], out int times) && times >= 1)
+                {
+                    BuildingTimesMap[id] = times;
+                }
+            }
         }
     }
     #endregion

@@ -162,6 +162,7 @@ public class RollHelper
 
             ruic.HideRecruitUI();
             ruic.ShowRecruitUI(RecruitUIType.Normal, heroNum, forceLv);
+            
         }
     }
 
@@ -186,4 +187,20 @@ public class RollHelper
     //         pc.FindSpeSteleFight();
     //     }
     // }
+
+    // 特殊毒药制作roll
+    public static void TrySpePoisonRoll()
+    {
+        var spc = SpePoisonController.Instance;
+        if (spc == null || spc.spePoisonUI == null || !spc.spePoisonUI.activeInHierarchy) return;
+        
+        var poisonData = spc.targetSpePoisonData;
+        if (poisonData is not { finished: true }) return;
+        var res = poisonData.result;
+        var newPoison = GameController.Instance.GenerateRandomItemValue(res.value, (int)res.type, 1f, res.subType);
+        spc.targetSpePoisonData.result = newPoison;
+        spc.HideSpePoisonUI();
+        spc.ShowSpePoisonUI();
+        
+    }
 }
