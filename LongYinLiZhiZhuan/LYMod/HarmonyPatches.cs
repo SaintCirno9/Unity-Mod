@@ -569,6 +569,8 @@ public class ChooseControllerPatches
                     }
                 }
             }
+            
+            // 使用targetHero获取NPC已有技能列表，但需要做null检查和IL2CPP对象有效性检查
             var npcExistingSkillIds = new System.Collections.Generic.HashSet<int>();
             if (currentTargetHero is { kungfuSkills: not null })
             {
@@ -1152,6 +1154,7 @@ public class HeroDataPatch
     {
         if (__instance == null) return;
         var n = __instance.nowShowHero;
+        if (n == null) return;
         
         int[] cdTable = { 30, 20, 15, 10, 5, 1, 0 };
         var lv = Mathf.Clamp(n.heroForceLv, 0, 6);
