@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
-[assembly: MelonInfo(typeof(SmartTrade.Plugin), "SmartTrade", "1.4.1", "Can")]
+[assembly: MelonInfo(typeof(SmartTrade.Plugin), "SmartTrade", "1.5", "Can")]
 [assembly: MelonGame("TppStudio", "LongYinLiZhiZhuan")]
 [assembly: MelonPlatformDomain(MelonPlatformDomainAttribute.CompatibleDomains.IL2CPP)]
 
@@ -61,6 +61,7 @@ namespace SmartTrade
         private int _currentFilter = 0;
         private bool _sortByIncome = true;
         private readonly List<GameObject> _listItems = new();
+        private readonly List<float> _listItemHeights = new();  // 每行的间距（含间距）
 
         #endregion
 
@@ -740,6 +741,12 @@ namespace SmartTrade
         {
             if (_listContent == null || entity == null) return;
             
+            // 根据特价商品数量决定行高：超过2个时换行，行高加倍
+            int treasureCount = entity.TreasurePriceInfo?.Count ?? 0;
+            bool needWrap = treasureCount > 2;
+            float rowHeight = needWrap ? 48f : 28f;  // 换行时行高48f，否则28f
+            float rowSpacing = needWrap ? 50f : 30f;  // 换行时行间距50f，否则30f
+            
             var rowObj = CreateUIObject("Row_" + _listItems.Count, _listContent.transform);
             
             var rowBgComp = rowObj.AddComponent(Il2CppType.Of<RawImage>());
@@ -752,14 +759,21 @@ namespace SmartTrade
                     : new Color(0.16f, 0.16f, 0.18f, 1f);
             }
             
+            // 计算当前行的Y偏移（累加之前所有行的高度）
+            float yOffset = 0f;
+            foreach (var h in _listItemHeights)
+            {
+                yOffset += h;
+            }
+            
             var rowRect = rowObj.GetComponent<RectTransform>();
             if (rowRect != null)
             {
                 rowRect.anchorMin = new Vector2(0f, 1f);
                 rowRect.anchorMax = new Vector2(1f, 1f);
                 rowRect.pivot = new Vector2(0.5f, 1f);
-                rowRect.anchoredPosition = new Vector2(0f, -_listItems.Count * 30f);
-                rowRect.sizeDelta = new Vector2(-10f, 28f);
+                rowRect.anchoredPosition = new Vector2(0f, -yOffset);
+                rowRect.sizeDelta = new Vector2(-10f, rowHeight);
             }
             
             float[] widths = [100f, 80f, 65f, 80f, 55f];
@@ -839,8 +853,14 @@ namespace SmartTrade
                         if (font != null)
                             text.font = font;
                         text.text = values[i];
-                        text.fontSize = 16;
+                        text.fontSize = 14;
                         text.alignment = TextAnchor.MiddleCenter;
+                        // 特价商品列：超过2个商品时启用换行
+                        if (i == 1 && needWrap)
+                        {
+                            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+                            text.verticalOverflow = VerticalWrapMode.Overflow;
+                        }
                         if (i == 3 && entity.Income > 0)
                             text.color = new Color(0.3f, 0.9f, 0.4f);
                         else if (i == 3 && entity.Income < 0)
@@ -857,17 +877,24 @@ namespace SmartTrade
                         colRect.pivot = new Vector2(0.5f, 0.5f);
                         float offsetX = -50f;  // 所有列都向左移动50px
                         colRect.anchoredPosition = new Vector2(startX + i * 98f + widths[i] / 2f + offsetX, 0f);
-                        colRect.sizeDelta = new Vector2(widths[i], 26f);
+                        colRect.sizeDelta = new Vector2(widths[i], rowHeight - 2f);
                     }
                 }
             }
             
             _listItems.Add(rowObj);
+            _listItemHeights.Add(rowSpacing);  // 记录每行的间距
             
+            // 计算总内容高度
+            float totalHeight = 0f;
+            foreach (var h in _listItemHeights)
+            {
+                totalHeight += h;
+            }
             var contentRect = _listContent.GetComponent<RectTransform>();
             if (contentRect != null)
             {
-                contentRect.sizeDelta = new Vector2(0f, _listItems.Count * 30f);
+                contentRect.sizeDelta = new Vector2(0f, totalHeight);
             }
         }
         
@@ -917,6 +944,7 @@ namespace SmartTrade
                     Object.Destroy(item);
             }
             _listItems.Clear();
+            _listItemHeights.Clear();
             
             if (_listContent != null)
             {

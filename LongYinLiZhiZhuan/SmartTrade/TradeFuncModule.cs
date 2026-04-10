@@ -242,7 +242,6 @@ namespace SmartTrade
                 if (netIncome > 1)
                 {
                     icon.OnClick();
-                    Other.ShowInfo($"[SmartTrade] 符合要求的商品：{icon.itemData.name}, 纯利润：{netIncome}");
                 }
             }
         }
